@@ -24,7 +24,11 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float Acceleration = 250.0f;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float WallRayCastDist = 200.0f;
+
 private:
+    void DetectWalls();
     void Move();
 
     FVector TargetDir = FVector::LeftVector; // placeholder
