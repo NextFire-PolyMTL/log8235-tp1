@@ -15,10 +15,14 @@ void ASDTAIController::BeginPlay()
 void ASDTAIController::Tick(float deltaTime)
 {
     Super::Tick(deltaTime);
+    Move();
+}
+
+void ASDTAIController::Move()
+{
     auto *pawn = GetPawn();
-    auto targetDir = FVector::LeftVector; // placeholder
     // rotate
-    auto rot = FQuat::FindBetween(pawn->GetActorForwardVector(), targetDir);
+    auto rot = FQuat::FindBetween(pawn->GetActorForwardVector(), TargetDir);
     pawn->AddActorWorldRotation(rot);
     // move forward
     pawn->AddMovementInput(pawn->GetActorForwardVector());

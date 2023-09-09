@@ -23,4 +23,9 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float Acceleration = 250.0f;
+
+private:
+    void Move();
+
+    FVector TargetDir = FVector::LeftVector; // placeholder
 };
