@@ -3,6 +3,15 @@
 #include "SDTAIController.h"
 #include "SoftDesignTraining.h"
 
+void ASDTAIController::BeginPlay()
+{
+    Super::BeginPlay();
+    auto *chara = GetCharacter();
+    auto *moveComp = chara->GetCharacterMovement();
+    moveComp->MaxWalkSpeed = MaxSpeed;
+    moveComp->MaxAcceleration = Acceleration;
+}
+
 void ASDTAIController::Tick(float deltaTime)
 {
     Super::Tick(deltaTime);
@@ -12,8 +21,7 @@ void ASDTAIController::Tick(float deltaTime)
     auto rot = FQuat::FindBetween(pawn->GetActorForwardVector(), targetDir);
     pawn->AddActorWorldRotation(rot);
     // move forward
-    m_Speed = FMath::Min(m_Speed + Acceleration * deltaTime, MaxSpeed);
-    pawn->AddMovementInput(pawn->GetActorForwardVector(), m_Speed * deltaTime);
+    pawn->AddMovementInput(pawn->GetActorForwardVector());
     // debug print
     GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Yellow, FString::Printf(TEXT("[%s] Velocity: %f m/s"), *pawn->GetName(), pawn->GetVelocity().Size()));
 }
