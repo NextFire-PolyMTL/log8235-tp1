@@ -19,17 +19,28 @@ public:
     virtual void Tick(float deltaTime) override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float MaxSpeed = 500.0f;
+    float MaxSpeed = 400.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float Acceleration = 250.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float WallRayCastDist = 200.0f;
+    float ForwardWallRayCastDist = 200.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float SidesWallRayCastDist = 300.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float RotationAngleBySecond = 180;
 
 private:
     void DetectWalls();
-    void Move();
+    void Move(float deltaTime);
 
     FVector TargetDir = FVector::LeftVector; // placeholder
+    double currentSpeed = 0;
+    bool isForwardHit = false;
+    bool isTurningAround = false;
+    FVector lastImpactNormal = FVector::ZeroVector;
+    int rotationDirection = 0;
 };

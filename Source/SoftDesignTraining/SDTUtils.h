@@ -10,5 +10,7 @@ class SOFTDESIGNTRAINING_API SDTUtils
 {
 public:
     static bool Raycast(UWorld* uWorld, FVector sourcePoint, FVector targetPoint);
+    static bool Raycast(UWorld* uWorld, FVector sourcePoint, FVector targetPoint, FHitResult& hitData);
+    static bool SweepCast(UWorld* uWorld, ACharacter* character, FVector direction, float distance, FHitResult& hitData);
     static bool IsPlayerPoweredUp(UWorld* uWorld);
 };
