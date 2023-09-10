@@ -26,6 +26,7 @@ public:
 
 private:
     void Move();
+    void DetectCollectible();
 
     FVector TargetDir = FVector::LeftVector; // placeholder
 };
