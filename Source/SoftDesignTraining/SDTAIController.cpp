@@ -11,7 +11,6 @@ void ASDTAIController::BeginPlay()
     Super::BeginPlay();
     auto chara = GetCharacter();
     auto moveComp = chara->GetCharacterMovement();
-    moveComp->MaxWalkSpeed = MaxSpeed;
     moveComp->MaxAcceleration = Acceleration;
 }
 
