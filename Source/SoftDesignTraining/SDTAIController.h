@@ -19,6 +19,12 @@ public:
     virtual void Tick(float deltaTime) override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float VisionDistance = 500.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float VisionAngle = PI / 3.0f;;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float MaxSpeed = 500.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -26,6 +32,8 @@ public:
 
 private:
     void Move();
+    void DetectCollectible();
+    bool IsInVisionCone(UWorld* world, AActor* pawn, AActor* targetActor);
 
     FVector TargetDir = FVector::LeftVector; // placeholder
 };
