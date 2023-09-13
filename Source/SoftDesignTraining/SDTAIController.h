@@ -19,22 +19,37 @@ public:
     virtual void Tick(float deltaTime) override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
+
+    float MaxSpeed = 400.0f;
+
     float VisionDistance = 500.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float VisionAngle = PI / 3.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float MaxSpeed = 500.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float Acceleration = 250.0f;
 
-private:
-    void Move();
-    void SpeedControl(float deltaTime);
-    void DetectCollectible();
-    bool IsInVisionCone(UWorld *world, AActor *pawn, AActor *targetActor);
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float ForwardWallRayCastDist = 200.0f;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float SidesWallRayCastDist = 300.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float RotationAngleBySecond = 180;
+
+private:
+    void DetectCollectible();
+    void DetectWalls();
+    void SpeedControl(float deltaTime);
+    void Move(float deltaTime);
+    bool IsInVisionCone(UWorld* world, AActor* pawn, AActor* targetActor);
+
+    FVector TargetDir = FVector::LeftVector; // placeholder
+    bool isForwardHit = false;
+    bool isTurningAround = false;
+    FVector lastImpactNormal = FVector::ZeroVector;
+    int rotationDirection = 0;
     float TargetSpeed = 0.0f;
 };
