@@ -3,12 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AIController.h"
 #include "Engine/StaticMeshActor.h"
 #include "SDTCollectible.generated.h"
 
-/**
- * 
- */
+
+
 UCLASS()
 class SOFTDESIGNTRAINING_API ASDTCollectible : public AStaticMeshActor
 {
@@ -26,12 +26,23 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI)
         bool isMoveable = false;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+        float MaxSpeed = 500.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+        float Acceleration = 250.0f;
+
     virtual void Tick(float deltaTime) override;
     virtual void BeginPlay() override;
 
     FVector initialPosition;
 
 protected:
+    float CurrentSpeed = 0.0f;
+    FVector TargetDir = FVector::RightVector;
+
+    void Move();
+
     FTimerHandle m_CollectCooldownTimer;
 	
 };

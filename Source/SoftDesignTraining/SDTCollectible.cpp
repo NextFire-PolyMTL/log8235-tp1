@@ -35,4 +35,27 @@ bool ASDTCollectible::IsOnCooldown()
 void ASDTCollectible::Tick(float deltaTime)
 {
     Super::Tick(deltaTime);
+
+    if (isMoveable)
+    {
+        Move();
+    }
+}
+
+void ASDTCollectible::Move()
+{
+    // Calcul de la nouvelle position en utilisant la méthode d'Euler
+    FVector NewLocation = GetActorLocation() + (TargetDir * CurrentSpeed * GetWorld()->DeltaTimeSeconds);
+
+    // Augmentation de la vitesse en fonction de l'accélération
+    CurrentSpeed += Acceleration * GetWorld()->DeltaTimeSeconds;
+
+    // Limiter la vitesse maximale
+    CurrentSpeed = FMath::Min(CurrentSpeed, MaxSpeed);
+
+    // Mettre à jour la position
+    SetActorLocation(NewLocation);
+
+    GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green, FString::Printf(TEXT("[%s] Location: %s"), *GetName(), *NewLocation.ToString()));
+
 }
