@@ -20,6 +20,7 @@ void ASDTAIController::Tick(float deltaTime)
     Super::Tick(deltaTime);
     DetectWalls();
     DetectCollectible();
+    SpeedControl(deltaTime);
     Move(deltaTime);
 }
 
@@ -113,20 +114,9 @@ void ASDTAIController::DetectWalls()
 void ASDTAIController::Move(float deltaTime)
 {
     auto character = GetCharacter();
-    FVector forward;
+    FVector forward = character->GetActorForwardVector();
     if (lastImpactNormal != FVector::ZeroVector)
     {
-        // While the character is turning, reduce the speed below a maximum speed value if it is running too fast, or just keep its speed constant if below that maximum speed.
-        // TODO: This does not work.
-        if (character->GetVelocity().Size() > 200)
-        {
-            currentSpeed = FMath::Min(-20 * Acceleration * deltaTime + character->GetVelocity().Size(), MaxSpeed);
-        }
-        else
-        {
-            currentSpeed = character->GetVelocity().Size();
-        }
-
         // rotate
         character->AddActorWorldRotation(FRotator(0, rotationDirection * RotationAngleBySecond * deltaTime, 0));
         forward = character->GetActorForwardVector();
@@ -140,21 +130,44 @@ void ASDTAIController::Move(float deltaTime)
             lastImpactNormal = FVector::ZeroVector;
         }
     }
-    else
-    {
-        currentSpeed = FMath::Min(Acceleration * deltaTime + character->GetVelocity().Size(), MaxSpeed);
-        forward = character->GetActorForwardVector();
-    }
 
     // move forward
-    character->AddMovementInput(forward, currentSpeed * deltaTime);
+    character->AddMovementInput(forward);
     // debug print
-    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Yellow, FString::Printf(TEXT("[%s] Velocity: %f cm/s"), *character->GetName(), character->GetVelocity().Size()));
+    GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Yellow, FString::Printf(TEXT("[%s] Velocity: %f cm/s"), *character->GetName(), character->GetVelocity().Size()));
 }
+
+void ASDTAIController::SpeedControl(float deltaTime)
+{
+    auto chara = GetCharacter();
+    auto currentSpeed = chara->GetVelocity().Size();
+    // While the character is turning, reduce the speed below a maximum speed value if it is running too fast, or just keep its speed constant if below that maximum speed.
+    float accelerationToApply;
+    if (isTurningAround)
+    {
+        if (chara->GetVelocity().Size() > 200)
+        {
+            accelerationToApply = -Acceleration;
+        }
+        else
+        {
+            accelerationToApply = 0;
+        }
+    }
+    else
+    {
+        accelerationToApply = Acceleration;
+    }
+
+    auto targetSpeed = FMath::Min(currentSpeed + accelerationToApply * deltaTime, MaxSpeed);
+    chara->GetCharacterMovement()->MaxWalkSpeed = targetSpeed;
+}
+
+
 
 void ASDTAIController::DetectCollectible()
 {
-    auto *pawn = GetPawn();
+    auto pawn = GetPawn();
     UWorld *world = GetWorld();
     float radius = VisionDistance;
     bool drawDebug = true;

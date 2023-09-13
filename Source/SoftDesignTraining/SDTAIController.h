@@ -42,13 +42,14 @@ public:
 private:
     void DetectCollectible();
     void DetectWalls();
+    void SpeedControl(float deltaTime);
     void Move(float deltaTime);
     bool IsInVisionCone(UWorld* world, AActor* pawn, AActor* targetActor);
 
     FVector TargetDir = FVector::LeftVector; // placeholder
-    double currentSpeed = 0;
     bool isForwardHit = false;
     bool isTurningAround = false;
     FVector lastImpactNormal = FVector::ZeroVector;
     int rotationDirection = 0;
+    float TargetSpeed = 0.0f;
 };
