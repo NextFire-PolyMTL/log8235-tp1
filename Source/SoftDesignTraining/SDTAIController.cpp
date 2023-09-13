@@ -6,27 +6,31 @@
 void ASDTAIController::BeginPlay()
 {
     Super::BeginPlay();
-    auto *chara = GetCharacter();
-    auto *moveComp = chara->GetCharacterMovement();
-    moveComp->MaxWalkSpeed = MaxSpeed;
+    auto chara = GetCharacter();
+    auto moveComp = chara->GetCharacterMovement();
     moveComp->MaxAcceleration = Acceleration;
 }
 
 void ASDTAIController::Tick(float deltaTime)
 {
     Super::Tick(deltaTime);
+    SpeedControl(deltaTime);
     Move();
     DetectCollectible();
 }
 
+void ASDTAIController::SpeedControl(float deltaTime)
+{
+    auto chara = GetCharacter();
+    auto currentSpeed = chara->GetVelocity().Size();
+    TargetSpeed = FMath::Min(currentSpeed + Acceleration * deltaTime, MaxSpeed);
+    auto moveComp = chara->GetCharacterMovement();
+    moveComp->MaxWalkSpeed = TargetSpeed;
+}
+
 void ASDTAIController::Move()
 {
-    auto *pawn = GetPawn();
-    /*
-    // rotate
-    auto rot = FQuat::FindBetween(pawn->GetActorForwardVector(), TargetDir);
-    pawn->AddActorWorldRotation(rot);
-    */
+    auto pawn = GetPawn();
     // move forward
     pawn->AddMovementInput(pawn->GetActorForwardVector());
     // debug print
@@ -35,7 +39,7 @@ void ASDTAIController::Move()
 
 void ASDTAIController::DetectCollectible()
 {
-    auto *pawn = GetPawn();
+    auto pawn = GetPawn();
     UWorld *world = GetWorld();
     float radius = VisionDistance;
     bool drawDebug = true;

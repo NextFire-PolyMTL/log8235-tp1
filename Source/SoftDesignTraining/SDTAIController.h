@@ -22,7 +22,7 @@ public:
     float VisionDistance = 500.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float VisionAngle = PI / 3.0f;;
+    float VisionAngle = PI / 3.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float MaxSpeed = 500.0f;
@@ -32,8 +32,9 @@ public:
 
 private:
     void Move();
+    void SpeedControl(float deltaTime);
     void DetectCollectible();
-    bool IsInVisionCone(UWorld* world, AActor* pawn, AActor* targetActor);
+    bool IsInVisionCone(UWorld *world, AActor *pawn, AActor *targetActor);
 
-    FVector TargetDir = FVector::LeftVector; // placeholder
+    float TargetSpeed = 0.0f;
 };
