@@ -10,7 +10,7 @@ void ASDTAIController::BeginPlay()
 {
     Super::BeginPlay();
     auto chara = GetCharacter();
-    auto *moveComp = chara->GetCharacterMovement();
+    auto moveComp = chara->GetCharacterMovement();
     moveComp->MaxWalkSpeed = MaxSpeed;
     moveComp->MaxAcceleration = Acceleration;
 }
@@ -29,15 +29,16 @@ void ASDTAIController::DetectWalls()
 
     auto forwardVector = character->GetActorForwardVector();
     auto loc = character->GetActorLocation();
-    //auto characterCollisionShape = character->GetCapsuleComponent()->GetCollisionShape();
+    // auto characterCollisionShape = character->GetCapsuleComponent()->GetCollisionShape();
 
     FHitResult forwardHit;
     isForwardHit = SDTUtils::Raycast(world, loc, loc + forwardVector * ForwardWallRayCastDist, forwardHit);
-    //isForwardHit = SDTUtils::SweepCast(world, character, forwardVector, ForwardWallRayCastDist, forwardHit);
+    // isForwardHit = SDTUtils::SweepCast(world, character, forwardVector, ForwardWallRayCastDist, forwardHit);
 
     if (isForwardHit)
     {
-        if (!isTurningAround) {
+        if (!isTurningAround)
+        {
             // Take only one decision on the side to turn around and stick on this rotation side until no
             // forward collision is detected. This is to avoid to stay stuck in a corner.
             isTurningAround = true;
@@ -57,31 +58,38 @@ void ASDTAIController::DetectWalls()
             auto isParallelHitSide2 = SDTUtils::Raycast(world, loc, loc - horizontalDirectionInPlane * SidesWallRayCastDist, parallelHitSide2);
 
             auto productForwardAndNormal = horizontalDirectionInPlane.Dot(forwardVector);
-            if (isParallelHitSide1 && isParallelHitSide2) {
+            if (isParallelHitSide1 && isParallelHitSide2)
+            {
                 // Turn to the direction where there is more space between the walls.
-                if (parallelHitSide1.Distance > parallelHitSide2.Distance) {
+                if (parallelHitSide1.Distance > parallelHitSide2.Distance)
+                {
                     rotationDirection = 1;
                     GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Walls on both sides. Direction is ") + FString::FromInt(rotationDirection));
                 }
-                else {
+                else
+                {
                     rotationDirection = -1;
                     GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Walls on both sides. Direction is ") + FString::FromInt(rotationDirection));
                 }
             }
-            else if (isParallelHitSide1) {
+            else if (isParallelHitSide1)
+            {
                 rotationDirection = -1;
                 GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Wall on right side only. Direction is ") + FString::FromInt(rotationDirection));
             }
-            else if (isParallelHitSide2) {
+            else if (isParallelHitSide2)
+            {
                 rotationDirection = 1;
                 GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Wall on left side only. Direction is ") + FString::FromInt(rotationDirection));
             }
             // If the actor approximately faces the wall, choose a random direction.
-            else if (-0.05f < productForwardAndNormal && productForwardAndNormal < 0.05f) {
+            else if (-0.05f < productForwardAndNormal && productForwardAndNormal < 0.05f)
+            {
                 rotationDirection = FMath::RandBool() ? 1 : -1;
                 GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Random Direction Chosen is ") + FString::FromInt(rotationDirection));
             }
-            else {
+            else
+            {
                 rotationDirection = FMath::Sign(productForwardAndNormal);
                 GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Direction is ") + FString::FromInt(rotationDirection));
             }
@@ -93,7 +101,7 @@ void ASDTAIController::DetectWalls()
             DrawDebugDirectionalArrow(world, forwardHit.ImpactPoint, (forwardHit.ImpactPoint + upVectorInPlane * 100.0), 5.0f, FColor::Blue, false, collisionDurationDebug, 0, 2.0f);
             DrawDebugDirectionalArrow(world, forwardHit.ImpactPoint, (forwardHit.ImpactPoint + horizontalDirectionInPlane * 100.0), 5.0f, FColor::Magenta, false, collisionDurationDebug, 0, 2.0f);
             DrawDebugDirectionalArrow(world, forwardHit.ImpactPoint - forwardVector * 100.0, forwardHit.ImpactPoint, 5.0f, FColor::Magenta, false, collisionDurationDebug, 0, 2.0f);
-            UPrimitiveComponent* hitComponent = forwardHit.GetComponent();
+            UPrimitiveComponent *hitComponent = forwardHit.GetComponent();
             DrawDebugBox(world, hitComponent->Bounds.Origin, hitComponent->Bounds.BoxExtent, FColor::Green, false, 30.0f);
         }
 
@@ -105,20 +113,24 @@ void ASDTAIController::Move(float deltaTime)
 {
     auto character = GetCharacter();
     FVector forward;
-    if (lastImpactNormal != FVector::ZeroVector) {
+    if (lastImpactNormal != FVector::ZeroVector)
+    {
         // While the character is turning, reduce the speed below a maximum speed value if it is running too fast, or just keep its speed constant if below that maximum speed.
         // TODO: This does not work.
-        if (character->GetVelocity().Size() > 200) {
+        if (character->GetVelocity().Size() > 200)
+        {
             currentSpeed = FMath::Min(-20 * Acceleration * deltaTime + character->GetVelocity().Size(), MaxSpeed);
         }
-        else {
+        else
+        {
             currentSpeed = character->GetVelocity().Size();
         }
 
         // rotate
         character->AddActorWorldRotation(FRotator(0, rotationDirection * RotationAngleBySecond * deltaTime, 0));
         forward = character->GetActorForwardVector();
-        if (forward.Dot(lastImpactNormal) > 0 && !isForwardHit) {
+        if (forward.Dot(lastImpactNormal) > 0 && !isForwardHit)
+        {
             isTurningAround = false;
             GEngine->AddOnScreenDebugMessage(INDEX_NONE, 1.0, FColor::Green, FString("Actor finished rotation. Normal = ") + lastImpactNormal.ToString() + FString(", Forward = ") + forward.ToString());
 
@@ -127,11 +139,11 @@ void ASDTAIController::Move(float deltaTime)
             lastImpactNormal = FVector::ZeroVector;
         }
     }
-    else {
+    else
+    {
         currentSpeed = FMath::Min(Acceleration * deltaTime + character->GetVelocity().Size(), MaxSpeed);
         forward = character->GetActorForwardVector();
     }
-
 
     // move forward
     character->AddMovementInput(forward, currentSpeed * deltaTime);
