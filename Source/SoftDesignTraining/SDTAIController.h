@@ -2,8 +2,9 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
+#include "Components/SplineComponent.h"
 #include "AIController.h"
+#include "CoreMinimal.h"
 
 #include "SDTAIController.generated.h"
 
@@ -16,6 +17,9 @@ class SOFTDESIGNTRAINING_API ASDTAIController : public AAIController
     GENERATED_BODY()
 public:
     virtual void BeginPlay() override;
+
+    virtual void OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result) override;
+
     virtual void Tick(float deltaTime) override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -31,15 +35,17 @@ public:
     float Acceleration = 250.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float ForwardWallRayCastDist = 200.0f;
+    float ForwardWallRayCastDist = 190.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float SidesWallRayCastDist = 300.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float RotationAngleBySecond = 180;
+    float RotationAngleBySecond = 200;
 
 private:
+    void CalculateFarForwardTarget(FVector headingTarget);
+    void CalculateFarForwardTarget();
     void DetectCollectible();
     void DetectWalls();
     void SpeedControl(float deltaTime);
@@ -48,6 +54,10 @@ private:
 
     bool isForwardHit = false;
     bool isTurningAround = false;
+    float forwardImpactDistance = 0.0f;
     FVector lastImpactNormal = FVector::ZeroVector;
     int rotationDirection = 0;
+    float TargetSpeed = 0.0f;
+
+    FVector targetMoveTo;
 };

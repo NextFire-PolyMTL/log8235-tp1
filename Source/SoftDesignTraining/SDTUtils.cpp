@@ -19,12 +19,12 @@ bool SDTUtils::Raycast(UWorld *uWorld, FVector sourcePoint, FVector targetPoint,
     return uWorld->LineTraceSingleByChannel(hitData, sourcePoint, targetPoint, ECC_Pawn, TraceParams);
 }
 
-bool SDTUtils::SweepCast(UWorld *uWorld, ACharacter *character, FVector direction, float distance, FHitResult &hitData)
+bool SDTUtils::SweepCast(UWorld* uWorld, FVector startPoint, FVector direction, float distance, const FCollisionShape& collisionShape, TArray<FHitResult>& hitData)
 {
+    FCollisionObjectQueryParams queryParams(ECC_TO_BITFIELD(ECC_WorldStatic) | ECC_TO_BITFIELD(ECC_GameTraceChannel3));
     FCollisionQueryParams TraceParams(FName(TEXT("VictoreCore Trace")), true);
-    TraceParams.AddIgnoredActor(character);
 
-    return uWorld->SweepSingleByObjectType(hitData, character->GetTargetLocation(), character->GetTargetLocation() + direction * distance, FQuat::Identity, ECC_Pawn, character->GetCapsuleComponent()->GetCollisionShape(), TraceParams);
+    return uWorld->SweepMultiByObjectType(hitData, startPoint, startPoint + direction * distance, FQuat::Identity, queryParams, collisionShape, TraceParams);
 }
 
 bool SDTUtils::IsPlayerPoweredUp(UWorld *uWorld)
