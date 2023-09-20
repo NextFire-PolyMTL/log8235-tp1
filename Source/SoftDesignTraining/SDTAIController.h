@@ -46,18 +46,20 @@ public:
 private:
     void CalculateFarForwardTarget(FVector headingTarget);
     void CalculateFarForwardTarget();
-    void DetectCollectible();
-    void DetectWalls();
-    void SpeedControl(float deltaTime);
-    void Move(float deltaTime);
+    bool DetectCollectible(FVector& targetDirection);
+    bool DetectWalls(FVector& targetDirection, float& collisionDistance);
+    void ResetWallsDetection();
+    void SpeedControl(float deltaTime, float wallCollisionDistance);
+    void Move(float deltaTime, FVector targetDirection);
     bool IsInVisionCone(UWorld* world, AActor* pawn, AActor* targetActor);
 
-    bool isForwardHit = false;
-    bool isTurningAround = false;
-    float forwardImpactDistance = 0.0f;
-    FVector lastImpactNormal = FVector::ZeroVector;
-    int rotationDirection = 0;
-    float TargetSpeed = 0.0f;
 
+    FVector lastImpactNormal = FVector::ZeroVector;
+    FVector lastTargetDirectionForWalls = FVector::ZeroVector;
+    int rotationDirection = 1;
+
+    FVector previousRotationAxis = FVector::ZeroVector;
     FVector targetMoveTo;
+
+    float TargetSpeed = 0.0f;
 };

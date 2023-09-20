@@ -13,4 +13,6 @@ public:
     static bool Raycast(UWorld* uWorld, FVector sourcePoint, FVector targetPoint, FHitResult& hitData);
     static bool SweepCast(UWorld* uWorld, FVector startPoint, FVector direction, float distance, const FCollisionShape& collisionShape, TArray<FHitResult>& hitData);
     static bool IsPlayerPoweredUp(UWorld* uWorld);
+
+    static float CosineVectors(FVector a, FVector b);
 };

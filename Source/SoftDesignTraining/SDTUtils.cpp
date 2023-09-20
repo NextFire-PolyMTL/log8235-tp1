@@ -39,3 +39,8 @@ bool SDTUtils::IsPlayerPoweredUp(UWorld *uWorld)
 
     return castedPlayerCharacter->IsPoweredUp();
 }
+
+float SDTUtils::CosineVectors(FVector a, FVector b)
+{
+    return FMath::Acos(a.Dot(b) / (a.Size() * b.Size()));
+}
