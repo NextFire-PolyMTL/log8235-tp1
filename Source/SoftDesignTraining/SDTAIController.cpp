@@ -133,7 +133,7 @@ void ASDTAIController::Move(float deltaTime)
     // move forward
     character->AddMovementInput(forward);
     // debug print
-    GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Yellow, FString::Printf(TEXT("[%s] Velocity: %f cm/s"), *character->GetName(), character->GetVelocity().Size()));
+    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Yellow, FString::Printf(TEXT("[%s] Velocity: %f cm/s"), *character->GetName(), character->GetVelocity().Size()));
 }
 
 void ASDTAIController::SpeedControl(float deltaTime)
@@ -185,7 +185,7 @@ void ASDTAIController::DetectCollectible()
     // bool sthDetected = world->LineTraceSingleByObjectType(hitResult, pawn->GetActorLocation(), pawn->GetActorLocation() + pawn->GetActorForwardVector() * 1000, objectQueryParams);
     // bool sthDetected = world->SweepSingleByObjectType(hitResult, pawn->GetActorLocation(), pawn->GetActorLocation() + pawn->GetActorForwardVector() * 1000, FQuat(0,0,0,0) ,objectQueryParams,visionBox);
 
-    GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue, FString::Printf(TEXT("detected=%d"), sthDetected));
+    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Blue, FString::Printf(TEXT("detected=%d"), sthDetected));
     if (sthDetected)
     {
         for (int i = 0; i < outOverlaps.Num(); i++)
@@ -208,8 +208,8 @@ void ASDTAIController::DetectCollectible()
                 DrawDebugLine(world, pawn->GetActorLocation(), outOverlaps[i].GetActor()->GetActorLocation(), FColor::Blue, false, -1, 0, 5);
                 DrawDebugBox(world, outOverlaps[i].GetActor()->GetActorLocation(), visionBox.GetBox(), FColor::Blue, false, -1, 0, 5);
                 DrawDebugBox(world, pawn->GetActorLocation(), visionBox.GetBox(), FColor::Blue, false, -1, 0, 5);
-                GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue, FString::Printf(TEXT("You hit: %s"), *FString(outOverlaps[i].GetActor()->GetActorLabel())));
-                GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue, FString::Printf(TEXT("Angle to hit: %f"), rotAngle));
+                GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Blue, FString::Printf(TEXT("You hit: %s"), *FString(outOverlaps[i].GetActor()->GetActorLabel())));
+                GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Blue, FString::Printf(TEXT("Angle to hit: %f"), rotAngle));
                 break;
             }
         }

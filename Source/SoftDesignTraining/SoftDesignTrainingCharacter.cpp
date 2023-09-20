@@ -7,7 +7,6 @@
 #include "DrawDebugHelpers.h"
 #include "SDTCollectible.h"
 
-
 ASoftDesignTrainingCharacter::ASoftDesignTrainingCharacter()
 {
     GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
@@ -21,13 +20,32 @@ void ASoftDesignTrainingCharacter::BeginPlay()
     m_StartingPosition = GetActorLocation();
 }
 
-void ASoftDesignTrainingCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void ASoftDesignTrainingCharacter::Tick(float deltaTime)
+{
+    Super::Tick(deltaTime);
+
+    auto time = GetWorld()->GetTimeSeconds();
+    auto timeString = FString::Printf(TEXT("%.1fs"), time);
+    auto pickupString = FString::Printf(TEXT("%d pickups"), m_PickupCount);
+    auto deathString = FString::Printf(TEXT("%d deaths"), m_DeathCount);
+
+    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::White, FString::Printf(TEXT("[%s] %.1fs, %d pickups, %d deaths"), *GetName(), time, m_PickupCount, m_DeathCount));
+
+    auto world = GetWorld();
+    auto loc = GetActorLocation();
+    DrawDebugString(world, loc, timeString, nullptr, FColor::White, 0.0f, true);
+    DrawDebugString(world, loc - FVector::UpVector * 100, pickupString, nullptr, FColor::White, 0.0f, true);
+    DrawDebugString(world, loc - FVector::UpVector * 200, deathString, nullptr, FColor::White, 0.0f, true);
+}
+
+void ASoftDesignTrainingCharacter::OnBeginOverlap(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComponent, int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult)
 {
     if (OtherComponent->GetCollisionObjectType() == COLLISION_DEATH_OBJECT)
     {
+        OnDeath();
         SetActorLocation(m_StartingPosition);
     }
-    else if(ASDTCollectible* collectibleActor = Cast<ASDTCollectible>(OtherActor))
+    else if (ASDTCollectible *collectibleActor = Cast<ASDTCollectible>(OtherActor))
     {
         if (!collectibleActor->IsOnCooldown())
         {
@@ -36,9 +54,19 @@ void ASoftDesignTrainingCharacter::OnBeginOverlap(UPrimitiveComponent* Overlappe
 
         collectibleActor->Collect();
     }
-    else if (ASoftDesignTrainingMainCharacter* mainCharacter = Cast<ASoftDesignTrainingMainCharacter>(OtherActor))
+    else if (ASoftDesignTrainingMainCharacter *mainCharacter = Cast<ASoftDesignTrainingMainCharacter>(OtherActor))
     {
-        if(mainCharacter->IsPoweredUp())
+        if (mainCharacter->IsPoweredUp())
             SetActorLocation(m_StartingPosition);
     }
+}
+
+void ASoftDesignTrainingCharacter::OnCollectPowerUp()
+{
+    m_PickupCount++;
+}
+
+void ASoftDesignTrainingCharacter::OnDeath()
+{
+    m_DeathCount++;
 }
