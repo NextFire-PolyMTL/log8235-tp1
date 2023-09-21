@@ -12,6 +12,8 @@ ASDTCollectible::ASDTCollectible()
 void ASDTCollectible::BeginPlay()
 {
     Super::BeginPlay();
+
+    initialPosition = GetActorLocation();
 }
 
 void ASDTCollectible::Collect()
@@ -19,6 +21,9 @@ void ASDTCollectible::Collect()
     GetWorld()->GetTimerManager().SetTimer(m_CollectCooldownTimer, this, &ASDTCollectible::OnCooldownDone, m_CollectCooldownDuration, false);
 
     GetStaticMeshComponent()->SetVisibility(false);
+
+    CurrentSpeed = 0.0f;
+    SetActorLocation(initialPosition);
 }
 
 void ASDTCollectible::OnCooldownDone()
@@ -37,7 +42,7 @@ void ASDTCollectible::Tick(float deltaTime)
 {
     Super::Tick(deltaTime);
 
-    if (isMoveable)
+    if (isMoveable && !IsOnCooldown())
     {
         Move();
     }
@@ -89,7 +94,7 @@ void ASDTCollectible::Move()
         CurrentSpeed = FMath::Min(CurrentSpeed, MaxSpeed);
     }
 
-    //GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green, FString::Printf(TEXT("Vitesse : %f m/s"), CurrentSpeed));
+    // GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green, FString::Printf(TEXT("Vitesse : %f m/s"), CurrentSpeed));
   
     // Mettre à jour la position
     SetActorLocation(NewLocation);
