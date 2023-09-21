@@ -20,6 +20,11 @@ void ASoftDesignTrainingCharacter::BeginPlay()
     m_StartingPosition = GetActorLocation();
 }
 
+void ASoftDesignTrainingCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    GEngine->RemoveOnScreenDebugMessage((uint64)GetUniqueID());
+}
+
 void ASoftDesignTrainingCharacter::Tick(float deltaTime)
 {
     Super::Tick(deltaTime);
@@ -29,7 +34,7 @@ void ASoftDesignTrainingCharacter::Tick(float deltaTime)
     auto pickupString = FString::Printf(TEXT("%d pickups"), m_PickupCount);
     auto deathString = FString::Printf(TEXT("%d deaths"), m_DeathCount);
 
-    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::White, FString::Printf(TEXT("[%s] %.1fs, %d pickups, %d deaths"), *GetName(), time, m_PickupCount, m_DeathCount));
+    GEngine->AddOnScreenDebugMessage((uint64)GetUniqueID(), INFINITY, FColor::White, FString::Printf(TEXT("[%s] %.1fs, %d pickups, %d deaths"), *GetName(), time, m_PickupCount, m_DeathCount));
 
     auto world = GetWorld();
     auto loc = GetActorLocation();
