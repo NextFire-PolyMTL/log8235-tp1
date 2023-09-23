@@ -20,29 +20,40 @@ public:
     void OnCooldownDone();
     bool IsOnCooldown();
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI)
-    float m_CollectCooldownDuration = 10.f;
+    // The duration taken by the collectible to respawn after being collected by an actor.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI, meta=(ClampMin = "0.0"))
+    float CollectCooldownDuration = 10.f;
 
+    // If checked, the collectible will move along the y axis (from left to right) using the specified Acceleration and MaxSpeed.
+    // The semi-implicit Euler method is used to calculate the next speed and next position.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI)
-        bool isMoveable = false;
+    bool IsMoveable = false;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI)
-        float MaxSpeed = 500.0f;
+    // The maximum speed at which the collectible moves. The actual speed of the collectible
+    // is calculated with the acceleration value.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI, meta = (ClampMin = "0.0"))
+    float MaxSpeed = 500.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI)
-        float Acceleration = 250.0f;
+    // The constant acceleration the collectible uses to calculate its next speed.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI, meta = (ClampMin = "1.0"))
+    float Acceleration = 250.0f;
+
+    // The distance from the wall at which the collectible must stop before moving
+    // in the other direction.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI, meta = (ClampMin = "0.0"))
+    float DistanceFromWall = 50.0f;
 
     virtual void Tick(float deltaTime) override;
     virtual void BeginPlay() override;
 
-    FVector initialPosition;
+private:
+    void Move(float deltaTime);
+    void ResetMovementComponents();
 
-protected:
-    float CurrentSpeed = 0.0f;
-    FVector TargetDir = FVector::RightVector;
-
-    void Move();
-
-    FTimerHandle m_CollectCooldownTimer;
-	
+    FTimerHandle CollectCooldownTimer;
+    FVector InitialPosition = FVector::ZeroVector;
+    FVector CurrentSpeed = FVector::ZeroVector;
+    FVector CurrentAcceleration = FVector::ZeroVector;
+    FVector CurrentHitNormal = FVector::ZeroVector;
+    FVector CurrentHitPoint = FVector::ZeroVector;
 };

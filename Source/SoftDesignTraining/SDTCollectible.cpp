@@ -13,90 +13,108 @@ void ASDTCollectible::BeginPlay()
 {
     Super::BeginPlay();
 
-    initialPosition = GetActorLocation();
+    InitialPosition = GetActorLocation();
+    ResetMovementComponents();
 }
 
 void ASDTCollectible::Collect()
 {
-    GetWorld()->GetTimerManager().SetTimer(m_CollectCooldownTimer, this, &ASDTCollectible::OnCooldownDone, m_CollectCooldownDuration, false);
+    GetWorld()->GetTimerManager().SetTimer(CollectCooldownTimer, this, &ASDTCollectible::OnCooldownDone, CollectCooldownDuration, false);
 
     GetStaticMeshComponent()->SetVisibility(false);
-
-    CurrentSpeed = 0.0f;
-    SetActorLocation(initialPosition);
 }
 
 void ASDTCollectible::OnCooldownDone()
 {
-    GetWorld()->GetTimerManager().ClearTimer(m_CollectCooldownTimer);
+    GetWorld()->GetTimerManager().ClearTimer(CollectCooldownTimer);
 
     GetStaticMeshComponent()->SetVisibility(true);
+    ResetMovementComponents();
 }
 
 bool ASDTCollectible::IsOnCooldown()
 {
-    return m_CollectCooldownTimer.IsValid();
+    return CollectCooldownTimer.IsValid();
 }
 
 void ASDTCollectible::Tick(float deltaTime)
 {
     Super::Tick(deltaTime);
 
-    if (isMoveable && !IsOnCooldown())
+    if (IsMoveable && !IsOnCooldown())
     {
-        Move();
+        Move(deltaTime);
     }
 }
 
-void ASDTCollectible::Move()
+void ASDTCollectible::ResetMovementComponents()
 {
+    CurrentSpeed = FVector(0, MaxSpeed, 0);
+    CurrentAcceleration = FVector(0, Acceleration, 0);
+    SetActorLocation(InitialPosition);
+}
 
-    FVector Origin;
-    FVector BoxExtent;
+void ASDTCollectible::Move(float deltaTime)
+{
+    auto world = GetWorld();
+    FVector origin;
+    FVector boxExtent;
 
-    GetActorBounds(false, Origin, BoxExtent);
+    GetActorBounds(false, origin, boxExtent);
+    float sphereRadius = boxExtent.X;
 
-    // Calcul de la nouvelle position en utilisant la méthode d'Euler
-    FVector NewLocation = Origin + (TargetDir * CurrentSpeed * GetWorld()->DeltaTimeSeconds);
+    FVector currentDir = CurrentSpeed;
+    currentDir.Normalize();
 
-    UWorld* World = GetWorld();
-    FQuat Rotation = FQuat::Identity;
-    float TimeToStop = CurrentSpeed / Acceleration;
-    FVector SphereCenter = Origin + (TargetDir * CurrentSpeed * TimeToStop);
-    float SphereRadius = BoxExtent.X;
-    TArray<FOverlapResult> OutOverlaps;
-
-    // Détection d'objets dans la sphère
-    bool bHit = World->OverlapMultiByObjectType(OutOverlaps, SphereCenter, Rotation, ECC_WorldStatic, FCollisionShape::MakeSphere(SphereRadius));
-
-    //DrawDebugSphere(GetWorld(), SphereCenter, SphereRadius, 32, FColor::Green, false, 0.1f);
-
-    if (bHit)
+    // Do a wall detection only if the current acceleration vector is in the same direction
+    // as the current speed vector.
+    if (CurrentAcceleration.Dot(CurrentSpeed) > 0)
     {
-        // Réduction de la vitesse en utilisant l'accélération négative
-        CurrentSpeed -= Acceleration * GetWorld()->DeltaTimeSeconds;
+        // Calculate the expected sphere position if it were to decelerate at a constant rate to zero speed.
+        float TimeToStop = CurrentSpeed.Size() / CurrentAcceleration.Size();
+        FVector spherePosAtZero = origin + (CurrentSpeed * TimeToStop) - CurrentAcceleration * FMath::Square(TimeToStop) / 2;
+        // Add an additional distance from the wall to indicate at which distance the collectible should stop.
+        spherePosAtZero += currentDir * DistanceFromWall;
 
-        CurrentSpeed = FMath::Max(CurrentSpeed, 0);
-
-        // Si la vitesse est inférieure ou égale à zéro, inversez la direction
-        if (CurrentSpeed <= 100.0f)
+        // Detect if there is a wall between the actual position and the expected position at zero speed.
+        FHitResult hitResult;
+        bool bHit = world->SweepSingleByObjectType(hitResult, origin, spherePosAtZero, FQuat::Identity, ECC_WorldStatic, FCollisionShape::MakeSphere(sphereRadius));
+        if (bHit)
         {
-            CurrentSpeed = 0.0f;
-            TargetDir = -TargetDir; // Inverser la direction
+            CurrentAcceleration = -CurrentAcceleration;
+            CurrentHitNormal = hitResult.ImpactNormal;
+            CurrentHitPoint = hitResult.ImpactPoint;
+            DrawDebugSphere(world, origin - hitResult.Distance * hitResult.ImpactNormal, sphereRadius, 32, FColor::Green, false, TimeToStop);
         }
+        else if (CurrentHitNormal != FVector::ZeroVector)
+        {
+            CurrentHitNormal = FVector::ZeroVector;
+            CurrentHitPoint = FVector::ZeroVector;
+        }
+
+        DrawDebugSphere(GetWorld(), spherePosAtZero, sphereRadius, 32, FColor::Red);
     }
-    else
+
+    // Use semi-implicit Euler to calculate the next speed and next position.
+    CurrentSpeed = CurrentSpeed + CurrentAcceleration * deltaTime;
+    // Restrict the CurrentSpeed to MaxSpeed.
+    float speedSize = CurrentSpeed.Size();
+    if (speedSize > MaxSpeed)
     {
-        // Augmentation de la vitesse en fonction de l'accélération
-        CurrentSpeed += Acceleration * GetWorld()->DeltaTimeSeconds;
+        CurrentSpeed *= MaxSpeed / speedSize;
+    }
+    FVector newLocation = origin + CurrentSpeed * deltaTime;
 
-        // Limiter la vitesse maximale
-        CurrentSpeed = FMath::Min(CurrentSpeed, MaxSpeed);
+    // Do an additional check to be sure to do not pass over the collision plane.
+    auto spherePotentialHitPoint = origin + currentDir * sphereRadius;
+    if (CurrentHitNormal != FVector::ZeroVector && CurrentHitNormal.Dot(spherePotentialHitPoint - CurrentHitPoint) < 0)
+    {
+        CurrentSpeed = FVector::ZeroVector;
+        newLocation = CurrentHitPoint + CurrentHitNormal * sphereRadius;
     }
 
-    // GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green, FString::Printf(TEXT("Vitesse : %f m/s"), CurrentSpeed));
-  
-    // Mettre à jour la position
-    SetActorLocation(NewLocation);
-    
+    // Update the position.
+    SetActorLocation(newLocation);
+
+    DrawDebugDirectionalArrow(world, spherePotentialHitPoint, spherePotentialHitPoint + CurrentSpeed, 20.0f, FColor::Blue, false, -1.0f, 0U, 5.0f);
 }
