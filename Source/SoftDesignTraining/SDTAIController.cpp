@@ -279,7 +279,7 @@ bool ASDTAIController::DetectCollectible(FVector& targetDirection)
     DrawDebugSphere(world, pawn->GetActorLocation(), radius, 24, FColor::Green);
     DrawDebugCone(world, pawn->GetActorLocation(), pawn->GetActorForwardVector(), VisionDistance, VisionAngle, VisionAngle, 24, FColor::Yellow);
 
-    GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue, FString::Printf(TEXT("detected=%d"), sthDetected));
+    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Blue, FString::Printf(TEXT("detected=%d"), sthDetected));
     if (sthDetected)
     {
         for (int i = 0; i < outOverlaps.Num(); i++)
