@@ -47,7 +47,7 @@ public:
     virtual void BeginPlay() override;
 
 private:
-    void Move(float deltaTime);
+    void Move(float deltaTime, FVector& spherePosAtZero, FVector& spherePotentialHitPoint);
     void ResetMovementComponents();
 
     FTimerHandle CollectCooldownTimer;
@@ -56,4 +56,5 @@ private:
     FVector CurrentAcceleration = FVector::ZeroVector;
     FVector CurrentHitNormal = FVector::ZeroVector;
     FVector CurrentHitPoint = FVector::ZeroVector;
+    float SphereRadius = 0.0f;
 };

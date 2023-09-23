@@ -3,6 +3,7 @@
 #include "SDTCollectible.h"
 #include "SoftDesignTraining.h"
 
+const double minUpdateRate = (1.0 / 60.0);
 
 ASDTCollectible::ASDTCollectible()
 {
@@ -15,6 +16,12 @@ void ASDTCollectible::BeginPlay()
 
     InitialPosition = GetActorLocation();
     ResetMovementComponents();
+
+    FVector origin;
+    FVector boxExtent;
+
+    GetActorBounds(false, origin, boxExtent);
+    SphereRadius = boxExtent.X;
 }
 
 void ASDTCollectible::Collect()
@@ -43,7 +50,22 @@ void ASDTCollectible::Tick(float deltaTime)
 
     if (IsMoveable && !IsOnCooldown())
     {
-        Move(deltaTime);
+        // This is only for debug draw. We want to debug draw only once per tick.
+        FVector spherePosAtZero = FVector::ZeroVector;
+        FVector spherePotentialHitPoint = FVector::ZeroVector;
+
+        float nbCalculations = FMath::Floor(deltaTime / minUpdateRate);
+        for (int i = 0; i < nbCalculations; ++i)
+        {
+            Move(minUpdateRate, spherePosAtZero, spherePotentialHitPoint);
+        }
+        Move(deltaTime - nbCalculations * minUpdateRate, spherePosAtZero, spherePotentialHitPoint);
+
+        if (spherePosAtZero != FVector::ZeroVector)
+        {
+            DrawDebugSphere(GetWorld(), spherePosAtZero, SphereRadius, 32, FColor::Red);
+        }
+        DrawDebugDirectionalArrow(GetWorld(), spherePotentialHitPoint, spherePotentialHitPoint + CurrentSpeed, 40.0f, FColor::Blue, false, -1.0f, 0U, 5.0f);
     }
 }
 
@@ -54,14 +76,10 @@ void ASDTCollectible::ResetMovementComponents()
     SetActorLocation(InitialPosition);
 }
 
-void ASDTCollectible::Move(float deltaTime)
+void ASDTCollectible::Move(float deltaTime, FVector& spherePosAtZero, FVector& spherePotentialHitPoint)
 {
     auto world = GetWorld();
-    FVector origin;
-    FVector boxExtent;
-
-    GetActorBounds(false, origin, boxExtent);
-    float sphereRadius = boxExtent.X;
+    auto origin = GetActorLocation();
 
     FVector currentDir = CurrentSpeed;
     currentDir.Normalize();
@@ -72,27 +90,25 @@ void ASDTCollectible::Move(float deltaTime)
     {
         // Calculate the expected sphere position if it were to decelerate at a constant rate to zero speed.
         float TimeToStop = CurrentSpeed.Size() / CurrentAcceleration.Size();
-        FVector spherePosAtZero = origin + (CurrentSpeed * TimeToStop) - CurrentAcceleration * FMath::Square(TimeToStop) / 2;
+        spherePosAtZero = origin + (CurrentSpeed * TimeToStop) - CurrentAcceleration * FMath::Square(TimeToStop) / 2;
         // Add an additional distance from the wall to indicate at which distance the collectible should stop.
         spherePosAtZero += currentDir * DistanceFromWall;
 
         // Detect if there is a wall between the actual position and the expected position at zero speed.
         FHitResult hitResult;
-        bool bHit = world->SweepSingleByObjectType(hitResult, origin, spherePosAtZero, FQuat::Identity, ECC_WorldStatic, FCollisionShape::MakeSphere(sphereRadius));
+        bool bHit = world->SweepSingleByObjectType(hitResult, origin, spherePosAtZero, FQuat::Identity, ECC_WorldStatic, FCollisionShape::MakeSphere(SphereRadius));
         if (bHit)
         {
             CurrentAcceleration = -CurrentAcceleration;
             CurrentHitNormal = hitResult.ImpactNormal;
             CurrentHitPoint = hitResult.ImpactPoint;
-            DrawDebugSphere(world, origin - hitResult.Distance * hitResult.ImpactNormal, sphereRadius, 32, FColor::Green, false, TimeToStop);
+            DrawDebugSphere(world, origin - hitResult.Distance * hitResult.ImpactNormal, SphereRadius, 32, FColor::Green, false, TimeToStop);
         }
         else if (CurrentHitNormal != FVector::ZeroVector)
         {
             CurrentHitNormal = FVector::ZeroVector;
             CurrentHitPoint = FVector::ZeroVector;
         }
-
-        DrawDebugSphere(GetWorld(), spherePosAtZero, sphereRadius, 32, FColor::Red);
     }
 
     // Use semi-implicit Euler to calculate the next speed and next position.
@@ -106,15 +122,13 @@ void ASDTCollectible::Move(float deltaTime)
     FVector newLocation = origin + CurrentSpeed * deltaTime;
 
     // Do an additional check to be sure to do not pass over the collision plane.
-    auto spherePotentialHitPoint = origin + currentDir * sphereRadius;
+    spherePotentialHitPoint = origin + currentDir * SphereRadius;
     if (CurrentHitNormal != FVector::ZeroVector && CurrentHitNormal.Dot(spherePotentialHitPoint - CurrentHitPoint) < 0)
     {
         CurrentSpeed = FVector::ZeroVector;
-        newLocation = CurrentHitPoint + CurrentHitNormal * sphereRadius;
+        newLocation = CurrentHitPoint + CurrentHitNormal * SphereRadius;
     }
 
     // Update the position.
     SetActorLocation(newLocation);
-
-    DrawDebugDirectionalArrow(world, spherePotentialHitPoint, spherePotentialHitPoint + CurrentSpeed, 20.0f, FColor::Blue, false, -1.0f, 0U, 5.0f);
 }
