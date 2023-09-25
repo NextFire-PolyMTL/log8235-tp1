@@ -23,13 +23,12 @@ public:
     virtual void Tick(float deltaTime) override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-
     float MaxSpeed = 400.0f;
 
-    float VisionDistance = 500.0f;
+    float VisionDistance = 800.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float VisionAngle = PI / 3.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0, ClampMax = 180.0))
+    double VisionAngle = 60.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float Acceleration = 250.0f;
@@ -44,16 +43,26 @@ public:
     float RotationAngleBySecond = 200;
 
 private:
+    enum class ObjectiveType
+    {
+        CHASSING,
+        FLEEING,
+        WALKING
+    };
+
     void CalculateFarForwardTarget(FVector headingTarget);
     void CalculateFarForwardTarget();
-    bool DetectCollectible(FVector& targetDirection);
+    void DetectObjective(ObjectiveType& objective, FVector& target);
+    //bool DetectCollectible(FVector& targetDirection);
     bool DetectWalls(FVector& targetDirection, float& collisionDistance);
     void ResetWallsDetection();
     void SpeedControl(float deltaTime, float wallCollisionDistance);
     void Move(float deltaTime, FVector targetDirection);
-    bool IsInVisionCone(UWorld* world, AActor* pawn, AActor* targetActor);
+    void Move(float deltaTime);
+    //bool IsInVisionCone(UWorld* world, AActor* pawn, AActor* targetActor);
 
-
+    USplineComponent *chassingSpline;
+    float splineDistance = -1.0f;
     FVector lastImpactNormal = FVector::ZeroVector;
     FVector lastTargetDirectionForWalls = FVector::ZeroVector;
     int rotationDirection = 1;

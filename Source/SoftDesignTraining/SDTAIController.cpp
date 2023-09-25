@@ -3,13 +3,10 @@
 #include "SDTAIController.h"
 #include "SoftDesignTraining.h"
 #include "SDTUtils.h"
+#include "SDTCollectible.h"
 
 const float collisionDurationDebug = 5.0f;
 
-void calculateSplineCurve(FVector startingPoint, float forwardDistance)
-{
-
-}
 
 void ASDTAIController::CalculateFarForwardTarget(FVector headingTarget)
 {
@@ -18,7 +15,7 @@ void ASDTAIController::CalculateFarForwardTarget(FVector headingTarget)
     FHitResult hitResult;
 
     targetMoveTo = GetCharacter()->GetActorLocation() + distance * headingTarget;
-    if (SDTUtils::Raycast(GetWorld(), character->GetActorLocation(), targetMoveTo, hitResult))
+    if (SDTUtils::BlockingRayAgent(GetWorld(), character->GetActorLocation(), targetMoveTo, hitResult))
     {
         // This is to ensure to set a target point and to avoid an infinite recursion between MoveToLocation and OnMoveCompleted.
         distance = FMath::Max(hitResult.Distance, 200);
@@ -35,6 +32,9 @@ void ASDTAIController::CalculateFarForwardTarget()
 void ASDTAIController::BeginPlay()
 {
     Super::BeginPlay();
+    chassingSpline = Cast<USplineComponent>(AddComponentByClass(USplineComponent::StaticClass(), false, FTransform::Identity, false));
+    chassingSpline->ClearSplinePoints();
+    chassingSpline->SetDrawDebug(true);
     auto character = GetCharacter();
     auto moveComp = character->GetCharacterMovement();
     moveComp->MaxWalkSpeed = MaxSpeed;
@@ -54,17 +54,92 @@ void ASDTAIController::Tick(float deltaTime)
 {
     Super::Tick(deltaTime);
     FVector targetDirection = FVector::ZeroVector;
+    bool followSpline = false;
     float wallCollisionDistance = -1.0f;
-    if (!DetectCollectible(targetDirection))
+    FVector target = FVector::ZeroVector;
+    ObjectiveType objective;
+
+    if (splineDistance != -1.0f && splineDistance <= chassingSpline->GetSplineLength() / 2)
     {
-        DetectWalls(targetDirection, wallCollisionDistance);
+        followSpline = true;
     }
     else
     {
-        ResetWallsDetection();
+        DetectObjective(objective, target);
+        switch (objective)
+        {
+        case ObjectiveType::CHASSING:
+        {
+            ResetWallsDetection();
+            TArray<FSplinePoint> pathPoints;
+            if (SDTUtils::FindPathToLocation(GetWorld(), GetCharacter()->GetActorLocation(), target, GetCharacter()->GetActorUpVector(), GetCharacter()->GetCapsuleComponent(), pathPoints))
+            {
+                if (pathPoints.Num() <= 2)
+                {
+                    DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Chassing direct", nullptr, FColor::Green, 0.0f, true);
+                    targetDirection = target - GetCharacter()->GetActorLocation();
+                    targetDirection.Normalize();
+                }
+                else
+                {
+                    DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Chassing spline", nullptr, FColor::Green, 0.0f, true);
+                    for (auto path : pathPoints)
+                    {
+                        DrawDebugPoint(GetWorld(), path.Position, 5.0f, FColor::Green, false, 10.0f);
+                    }
+                    followSpline = true;
+                    chassingSpline->ClearSplinePoints(false);
+                    chassingSpline->AddPoints(pathPoints);
+                    splineDistance = 0.0f;
+                }
+            }
+            else
+            {
+                // TODO: Move to the closest point before the collision in straight line?
+            }
+            break;
+        }
+
+        case ObjectiveType::FLEEING:
+        {
+            DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Fleeing", nullptr, FColor::Green, 0.0f, true);
+
+            chassingSpline->ClearSplinePoints(true);
+            splineDistance = -1.0f;
+
+            FVector parallelWallDirection;
+            FVector fleeDirection = target - GetCharacter()->GetActorLocation();
+            fleeDirection.Normalize();
+            if (DetectWalls(parallelWallDirection, wallCollisionDistance))
+            {
+                if (fleeDirection.Dot(parallelWallDirection) < 0)
+                {
+                    fleeDirection = -parallelWallDirection;
+                }
+            }
+        }
+        break;
+
+        case ObjectiveType::WALKING:
+            DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Walking", nullptr, FColor::Green, 0.0f, true);
+
+            chassingSpline->ClearSplinePoints(true);
+            splineDistance = -1.0f;
+
+            DetectWalls(targetDirection, wallCollisionDistance);
+            break;
+        }
     }
+
     SpeedControl(deltaTime, wallCollisionDistance);
-    Move(deltaTime, targetDirection);
+    if (followSpline)
+    {
+        Move(deltaTime);
+    }
+    else
+    {
+        Move(deltaTime, targetDirection);
+    }
 }
 
 bool ASDTAIController::DetectWalls(FVector& targetDirection, float& collisionDistance)
@@ -77,7 +152,7 @@ bool ASDTAIController::DetectWalls(FVector& targetDirection, float& collisionDis
     auto loc = character->GetActorLocation();
 
     TArray<FHitResult> hitData;
-    SDTUtils::SweepCast(world, loc, forwardVector, ForwardWallRayCastDist, collisionShape, hitData);
+    SDTUtils::SweepOverlapAgent(world, loc, loc + ForwardWallRayCastDist * forwardVector, collisionShape, hitData);
     bool isForwardHit = !hitData.IsEmpty();
 
     if (isForwardHit)
@@ -101,7 +176,7 @@ bool ASDTAIController::DetectWalls(FVector& targetDirection, float& collisionDis
             if (!isNewWallDetection)
             {
                 // Stick on the same rotation side when detecting any subsequent walls. This is to avoid to stay stuck in a corner.
-                lastTargetDirectionForWalls = FMath::Sign(previousRotationAxis.Dot(forwardVector.Cross(parallelHitDirection))) * parallelHitDirection;
+                lastTargetDirectionForWalls = rotationDirection * parallelHitDirection;
             }
             else
             {
@@ -112,9 +187,9 @@ bool ASDTAIController::DetectWalls(FVector& targetDirection, float& collisionDis
                 // Use the horizontal vector parallel to the wall to detect another wall at the left or the right of the character.
                 // It works here because the floor is flat. On an inclined floor, the sweep will hit the floor.
                 TArray<FHitResult> parallelHitSide1;
-                auto isParallelHitSide1 = SDTUtils::SweepCast(world, impactPointWithCapsule, parallelHitDirection, SidesWallRayCastDist, collisionShape, parallelHitSide1);
+                auto isParallelHitSide1 = SDTUtils::SweepOverlapAgent(world, impactPointWithCapsule, impactPointWithCapsule + parallelHitDirection * SidesWallRayCastDist, collisionShape, parallelHitSide1);
                 TArray<FHitResult> parallelHitSide2;
-                auto isParallelHitSide2 = SDTUtils::SweepCast(world, impactPointWithCapsule, -parallelHitDirection, SidesWallRayCastDist, collisionShape, parallelHitSide2);
+                auto isParallelHitSide2 = SDTUtils::SweepOverlapAgent(world, impactPointWithCapsule, impactPointWithCapsule - parallelHitDirection * SidesWallRayCastDist, collisionShape, parallelHitSide2);
 
                 auto productForwardAndNormal = parallelHitDirection.Dot(forwardVector);
                 if (!parallelHitSide1.IsEmpty() && !parallelHitSide2.IsEmpty())
@@ -123,35 +198,35 @@ bool ASDTAIController::DetectWalls(FVector& targetDirection, float& collisionDis
                     if (parallelHitSide1[0].Distance > parallelHitSide2[0].Distance)
                     {
                         rotationDirection = 1;
-                        GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Walls on both sides. Direction is ") + FString::FromInt(rotationDirection));
+                        //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Walls on both sides. Direction is ") + FString::FromInt(rotationDirection));
                     }
                     else
                     {
                         rotationDirection = -1;
-                        GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Walls on both sides. Direction is ") + FString::FromInt(rotationDirection));
+                        //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Walls on both sides. Direction is ") + FString::FromInt(rotationDirection));
                     }
                 }
                 else if (isParallelHitSide1)
                 {
                     rotationDirection = -1;
-                    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Wall on right side only. Direction is ") + FString::FromInt(rotationDirection));
+                    //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Wall on right side only. Direction is ") + FString::FromInt(rotationDirection));
                 }
                 else if (isParallelHitSide2)
                 {
                     rotationDirection = 1;
-                    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Wall on left side only. Direction is ") + FString::FromInt(rotationDirection));
+                    //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Wall on left side only. Direction is ") + FString::FromInt(rotationDirection));
                 }
                 // If the actor approximately faces the wall, choose a random direction.
                 else if (-0.05f < productForwardAndNormal && productForwardAndNormal < 0.05f)
                 {
                     rotationDirection = FMath::RandBool() ? 1 : -1;
-                    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Random Direction Chosen is ") + FString::FromInt(rotationDirection));
+                    //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Random Direction Chosen is ") + FString::FromInt(rotationDirection));
                 }
                 else
                 {
                     lastTargetDirectionForWalls = FMath::Sign(productForwardAndNormal) * parallelHitDirection;
                     rotationDirection = FMath::Sign(productForwardAndNormal);
-                    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Direction is ") + FString::FromInt(rotationDirection));
+                    //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Direction is ") + FString::FromInt(rotationDirection));
                 }
                 lastTargetDirectionForWalls = rotationDirection * parallelHitDirection;
 
@@ -164,7 +239,7 @@ bool ASDTAIController::DetectWalls(FVector& targetDirection, float& collisionDis
                 DrawDebugDirectionalArrow(world, forwardHit.ImpactPoint, (forwardHit.ImpactPoint + parallelHitDirection * 100.0), 5.0f, FColor::Magenta, false, collisionDurationDebug, 0, 2.0f);
                 DrawDebugDirectionalArrow(world, forwardHit.ImpactPoint - forwardVector * 100.0, forwardHit.ImpactPoint, 5.0f, FColor::Magenta, false, collisionDurationDebug, 0, 2.0f);
                 UPrimitiveComponent* hitComponent = forwardHit.GetComponent();
-                DrawDebugBox(world, hitComponent->Bounds.Origin, hitComponent->Bounds.BoxExtent, FColor::Green, false, 30.0f);
+                DrawDebugBox(world, hitComponent->Bounds.Origin, hitComponent->Bounds.BoxExtent, FColor::Green, false, collisionDurationDebug);
             }
         }
         targetDirection = lastTargetDirectionForWalls;
@@ -230,6 +305,18 @@ void ASDTAIController::Move(float deltaTime, FVector targetDirection)
     GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Yellow, FString::Printf(TEXT("[%s] Velocity: %f cm/s"), *character->GetName(), character->GetVelocity().Size()));
 }
 
+void ASDTAIController::Move(float deltaTime)
+{
+    splineDistance = FMath::Min(chassingSpline->GetSplineLength(), splineDistance + GetCharacter()->GetCharacterMovement()->MaxWalkSpeed * deltaTime);
+    auto splineLocation = chassingSpline->GetWorldLocationAtDistanceAlongSpline(splineDistance);
+    MoveToLocation(splineLocation, -1, true, false, false);
+
+    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Black, FString::Printf(TEXT("splineLocation: %s"), *splineLocation.ToString()));
+    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Black, FString::Printf(TEXT("splineDistance: %f"), splineDistance));
+    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Black, FString::Printf(TEXT("splineLength: %f"), chassingSpline->GetSplineLength()));
+    DrawDebugPoint(GetWorld(), splineLocation, 10.0f, FColor::Blue);
+}
+
 void ASDTAIController::SpeedControl(float deltaTime, float wallCollisionDistance)
 {
     auto character = GetCharacter();
@@ -263,80 +350,45 @@ void ASDTAIController::SpeedControl(float deltaTime, float wallCollisionDistance
 }
 
 
-
-bool ASDTAIController::DetectCollectible(FVector& targetDirection)
+void ASDTAIController::DetectObjective(ObjectiveType& objective, FVector& target)
 {
-    auto pawn = GetPawn();
-    UWorld *world = GetWorld();
-    float radius = VisionDistance;
-    bool drawDebug = true;
-    FCollisionObjectQueryParams objectQueryParams;
-    FCollisionShape neighSphere = FCollisionShape().MakeSphere(radius);
-    objectQueryParams.AddObjectTypesToQuery(ECC_GameTraceChannel5);
-
-    TArray<struct FOverlapResult> outOverlaps;
-    bool sthDetected = world->OverlapMultiByObjectType(outOverlaps, pawn->GetActorLocation(), FQuat::Identity, objectQueryParams, neighSphere);
-    DrawDebugSphere(world, pawn->GetActorLocation(), radius, 24, FColor::Green);
-    DrawDebugCone(world, pawn->GetActorLocation(), pawn->GetActorForwardVector(), VisionDistance, VisionAngle, VisionAngle, 24, FColor::Yellow);
-
-    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Blue, FString::Printf(TEXT("detected=%d"), sthDetected));
-    if (sthDetected)
+    FVector location = GetCharacter()->GetActorLocation();
+    TArray<FOverlapResult> overlapData;
+    if (SDTUtils::DetectTargetsFromAgent(GetWorld(), location, VisionDistance * GetCharacter()->GetActorForwardVector(), VisionAngle, overlapData))
     {
-        for (int i = 0; i < outOverlaps.Num(); i++)
+        auto overlap = overlapData.FindByPredicate([](auto overlap) -> auto {
+            return overlap.GetComponent()->GetCollisionObjectType() == COLLISION_PLAYER;
+        });
+        if (overlap != nullptr)
         {
-            bool isVisible = IsInVisionCone(world, pawn, outOverlaps[i].GetActor());
-            if (isVisible)
+            // Chase or flee from the player.
+            objective = SDTUtils::IsPlayerPoweredUp(GetWorld()) ? ObjectiveType::FLEEING : ObjectiveType::CHASSING;
+            target = overlap->GetActor()->GetActorLocation();
+        }
+        else
+        {
+            // Chase the closest collectible, or just walk if all collectibles are hidden.
+            objective = ObjectiveType::CHASSING;
+            auto smallestDistance = INFINITY;
+            for (int i = 0; i < overlapData.Num(); ++i)
             {
-                targetDirection = outOverlaps[i].GetActor()->GetActorLocation() - pawn->GetActorLocation();
-                targetDirection.Normalize();
-
-                // Debug drawing
-                DrawDebugLine(world, pawn->GetActorLocation(), outOverlaps[i].GetActor()->GetActorLocation(), FColor::Magenta, false, -1, 0, 5);
-                GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Blue, FString::Printf(TEXT("You hit: %s"), *FString(outOverlaps[i].GetActor()->GetActorLabel())));
-                return true;
+                ASDTCollectible *collectible = dynamic_cast<ASDTCollectible*>(overlapData[i].GetActor());
+                if (collectible != nullptr && !collectible->IsOnCooldown()) {
+                    auto distance = (overlapData[i].GetActor()->GetActorLocation() - location).Size();
+                    if (distance < smallestDistance)
+                    {
+                        smallestDistance = distance;
+                        target = overlapData[i].GetActor()->GetActorLocation();
+                    }
+                }
             }
+            objective = smallestDistance != INFINITY ? ObjectiveType::CHASSING : ObjectiveType::WALKING;
         }
     }
-    return false;
-}
-
-bool ASDTAIController::IsInVisionCone(UWorld *world, AActor *pawn, AActor *targetActor)
-{
-
-    // We check if the target actor is too far from the pawn
-    if (FVector::Dist2D(pawn->GetActorLocation(), targetActor->GetActorLocation()) > VisionDistance)
+    else
     {
-        return false;
+        objective = ObjectiveType::WALKING;
     }
 
-    float collisionRadius;
-    float collisionHalfHeight;
-    pawn->GetSimpleCollisionCylinder(collisionRadius, collisionHalfHeight);
-    FCollisionShape collisionCylinder = FCollisionShape().MakeCapsule(FVector(collisionRadius, collisionRadius, collisionHalfHeight));
-
-    FCollisionObjectQueryParams objectQueryParams;
-    objectQueryParams.AddObjectTypesToQuery(ECC_PhysicsBody);
-    objectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
-    objectQueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
-    objectQueryParams.AddObjectTypesToQuery(ECC_GameTraceChannel3);
-    FHitResult hitResult;
-
-    // We see if there is an obstacle
-    bool sthDetected = world->SweepSingleByObjectType(hitResult, pawn->GetActorLocation(), targetActor->GetActorLocation(), FQuat(0, 0, 0, 0), objectQueryParams, collisionCylinder);
-    if (sthDetected)
-    {
-        return false;
-    }
-
-    FVector direction = targetActor->GetActorLocation() - pawn->GetActorLocation();
-    float value = FVector::DotProduct(direction.GetSafeNormal(), pawn->GetActorForwardVector().GetSafeNormal());
-    auto angle = FMath::Acos(value);
-
-    // We check if the target actor is in the cone
-    if (FMath::Abs(angle) <= VisionAngle)
-    {
-        return true;
-    }
-
-    return false;
+    DrawDebugCone(GetWorld(), location, GetCharacter()->GetActorForwardVector(), VisionDistance, FMath::DegreesToRadians(VisionAngle), FMath::DegreesToRadians(VisionAngle), 24, FColor::Red);
 }
