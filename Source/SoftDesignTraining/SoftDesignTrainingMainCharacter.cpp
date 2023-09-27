@@ -32,12 +32,14 @@ void ASoftDesignTrainingMainCharacter::OnBeginOverlap(UPrimitiveComponent* Overl
     if (ASoftDesignTrainingCharacter* character = Cast<ASoftDesignTrainingCharacter>(OtherActor))
     {
         if (!IsPoweredUp())
+            OnDeath();
             SetActorLocation(m_StartingPosition);
     }
 }
 
 void ASoftDesignTrainingMainCharacter::OnCollectPowerUp()
 {
+    Super::OnCollectPowerUp();
     m_IsPoweredUp = true;
 
     GetMesh()->SetMaterial(0, m_PoweredUpMaterial);
