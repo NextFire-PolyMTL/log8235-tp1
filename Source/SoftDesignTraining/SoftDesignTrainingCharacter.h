@@ -18,6 +18,10 @@ public:
     virtual void OnCollectPowerUp();
     virtual void OnDeath();
 
+    /// Show pickup and death counts on screen
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    bool ShowStats = true;
+
 protected:
     UFUNCTION()
     virtual void OnBeginOverlap(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComponent, int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult);
