@@ -62,6 +62,7 @@ void ASoftDesignTrainingCharacter::OnBeginOverlap(UPrimitiveComponent *Overlappe
     else if (ASoftDesignTrainingMainCharacter *mainCharacter = Cast<ASoftDesignTrainingMainCharacter>(OtherActor))
     {
         if (mainCharacter->IsPoweredUp())
+            OnDeath();
             SetActorLocation(m_StartingPosition);
     }
 }
