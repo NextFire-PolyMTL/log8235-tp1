@@ -37,7 +37,7 @@ void ASDTAIController::BeginPlay()
     chassingSpline->SetDrawDebug(true);
     auto character = GetCharacter();
     auto moveComp = character->GetCharacterMovement();
-    moveComp->MaxWalkSpeed = MaxSpeed;
+    moveComp->MaxAcceleration = Acceleration;
     CalculateFarForwardTarget();
 }
 
