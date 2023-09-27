@@ -78,3 +78,4 @@ DerivedDataCache/*
 .vscode/
 *.code-workspace
 .ignore
+Content/StarterContent/
