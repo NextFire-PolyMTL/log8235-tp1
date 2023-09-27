@@ -3,7 +3,7 @@
 #include "SDTCollectible.h"
 #include "SoftDesignTraining.h"
 
-const double minUpdateRate = (1.0 / 60.0);
+const auto minUpdateRate = (1.0 / 60.0);
 
 ASDTCollectible::ASDTCollectible()
 {
@@ -51,10 +51,10 @@ void ASDTCollectible::Tick(float deltaTime)
     if (IsMoveable && !IsOnCooldown())
     {
         // This is only for debug draw. We want to debug draw only once per tick.
-        FVector spherePosAtZero = FVector::ZeroVector;
-        FVector spherePotentialHitPoint = FVector::ZeroVector;
+        auto spherePosAtZero = FVector::ZeroVector;
+        auto spherePotentialHitPoint = FVector::ZeroVector;
 
-        float nbCalculations = FMath::Floor(deltaTime / minUpdateRate);
+        auto nbCalculations = FMath::Floor(deltaTime / minUpdateRate);
         for (int i = 0; i < nbCalculations; ++i)
         {
             Move(minUpdateRate, spherePosAtZero, spherePotentialHitPoint);
@@ -76,12 +76,12 @@ void ASDTCollectible::ResetMovementComponents()
     SetActorLocation(InitialPosition);
 }
 
-void ASDTCollectible::Move(float deltaTime, FVector& spherePosAtZero, FVector& spherePotentialHitPoint)
+void ASDTCollectible::Move(float deltaTime, FVector &spherePosAtZero, FVector &spherePotentialHitPoint)
 {
     auto world = GetWorld();
     auto origin = GetActorLocation();
 
-    FVector currentDir = CurrentSpeed;
+    auto currentDir = CurrentSpeed;
     currentDir.Normalize();
 
     // Do a wall detection only if the current acceleration vector is in the same direction
@@ -89,14 +89,14 @@ void ASDTCollectible::Move(float deltaTime, FVector& spherePosAtZero, FVector& s
     if (CurrentAcceleration.Dot(CurrentSpeed) > 0)
     {
         // Calculate the expected sphere position if it were to decelerate at a constant rate to zero speed.
-        float TimeToStop = CurrentSpeed.Size() / CurrentAcceleration.Size();
+        auto TimeToStop = CurrentSpeed.Size() / CurrentAcceleration.Size();
         spherePosAtZero = origin + (CurrentSpeed * TimeToStop) - CurrentAcceleration * FMath::Square(TimeToStop) / 2;
         // Add an additional distance from the wall to indicate at which distance the collectible should stop.
         spherePosAtZero += currentDir * DistanceFromWall;
 
         // Detect if there is a wall between the actual position and the expected position at zero speed.
         FHitResult hitResult;
-        bool bHit = world->SweepSingleByObjectType(hitResult, origin, spherePosAtZero, FQuat::Identity, ECC_WorldStatic, FCollisionShape::MakeSphere(SphereRadius));
+        auto bHit = world->SweepSingleByObjectType(hitResult, origin, spherePosAtZero, FQuat::Identity, ECC_WorldStatic, FCollisionShape::MakeSphere(SphereRadius));
         if (bHit)
         {
             CurrentAcceleration = -CurrentAcceleration;
@@ -114,12 +114,12 @@ void ASDTCollectible::Move(float deltaTime, FVector& spherePosAtZero, FVector& s
     // Use semi-implicit Euler to calculate the next speed and next position.
     CurrentSpeed = CurrentSpeed + CurrentAcceleration * deltaTime;
     // Restrict the CurrentSpeed to MaxSpeed.
-    float speedSize = CurrentSpeed.Size();
+    auto speedSize = CurrentSpeed.Size();
     if (speedSize > MaxSpeed)
     {
         CurrentSpeed *= MaxSpeed / speedSize;
     }
-    FVector newLocation = origin + CurrentSpeed * deltaTime;
+    auto newLocation = origin + CurrentSpeed * deltaTime;
 
     // Do an additional check to be sure to do not pass over the collision plane.
     spherePotentialHitPoint = origin + currentDir * SphereRadius;

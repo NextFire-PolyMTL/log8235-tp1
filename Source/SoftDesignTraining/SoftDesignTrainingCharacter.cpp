@@ -20,7 +20,7 @@ void ASoftDesignTrainingCharacter::BeginPlay()
     Super::BeginPlay();
 
     GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &ASoftDesignTrainingCharacter::OnBeginOverlap);
-    m_StartingPosition = GetActorLocation();
+    StartingPosition = GetActorLocation();
 }
 
 void ASoftDesignTrainingCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -34,10 +34,10 @@ void ASoftDesignTrainingCharacter::Tick(float deltaTime)
 
     auto time = GetWorld()->GetTimeSeconds();
     auto timeString = FString::Printf(TEXT("%.1fs"), time);
-    auto pickupString = FString::Printf(TEXT("%d pickups"), m_PickupCount);
-    auto deathString = FString::Printf(TEXT("%d deaths"), m_DeathCount);
+    auto pickupString = FString::Printf(TEXT("%d pickups"), PickupCount);
+    auto deathString = FString::Printf(TEXT("%d deaths"), DeathCount);
 
-    GEngine->AddOnScreenDebugMessage((uint64)GetUniqueID(), INFINITY, FColor::White, FString::Printf(TEXT("[%s] %.1fs, %d pickups, %d deaths"), *GetName(), time, m_PickupCount, m_DeathCount));
+    GEngine->AddOnScreenDebugMessage((uint64)GetUniqueID(), INFINITY, FColor::White, FString::Printf(TEXT("[%s] %.1fs, %d pickups, %d deaths"), *GetName(), time, PickupCount, DeathCount));
 
     auto world = GetWorld();
     auto loc = GetActorLocation();
@@ -51,7 +51,7 @@ void ASoftDesignTrainingCharacter::OnBeginOverlap(UPrimitiveComponent *Overlappe
     if (OtherComponent->GetCollisionObjectType() == COLLISION_DEATH_OBJECT)
     {
         OnDeath();
-        SetActorLocation(m_StartingPosition);
+        SetActorLocation(StartingPosition);
     }
     else if (ASDTCollectible *collectibleActor = Cast<ASDTCollectible>(OtherActor))
     {
@@ -67,17 +67,17 @@ void ASoftDesignTrainingCharacter::OnBeginOverlap(UPrimitiveComponent *Overlappe
         if (mainCharacter->IsPoweredUp())
         {
             OnDeath();
-            SetActorLocation(m_StartingPosition);
+            SetActorLocation(StartingPosition);
         }
     }
 }
 
 void ASoftDesignTrainingCharacter::OnCollectPowerUp()
 {
-    m_PickupCount++;
+    PickupCount++;
 }
 
 void ASoftDesignTrainingCharacter::OnDeath()
 {
-    m_DeathCount++;
+    DeathCount++;
 }

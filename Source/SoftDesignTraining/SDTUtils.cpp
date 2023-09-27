@@ -9,14 +9,14 @@
 
 #include <iostream>
 
-bool GetAvoidingLeftPoint(UWorld* world, const FHitResult& obstacle, FVector start, UCapsuleComponent* actorCapsule, FVector& avoidingPoint)
+bool GetAvoidingLeftPoint(UWorld *world, const FHitResult &obstacle, FVector start, UCapsuleComponent *actorCapsule, FVector &avoidingPoint)
 {
-    float capsuleRadius = actorCapsule->GetScaledCapsuleRadius() + 1;
-    FBox box = obstacle.GetActor()->GetComponentsBoundingBox();
-    float minX = box.Min.X;
-    float maxX = box.Max.X;
-    float minY = box.Min.Y;
-    float maxY = box.Max.Y;
+    auto capsuleRadius = actorCapsule->GetScaledCapsuleRadius() + 1;
+    auto box = obstacle.GetActor()->GetComponentsBoundingBox();
+    auto minX = box.Min.X;
+    auto maxX = box.Max.X;
+    auto minY = box.Min.Y;
+    auto maxY = box.Max.Y;
     if (start.X <= maxX && start.Y < minY)
     {
         avoidingPoint = FVector(maxX + capsuleRadius, minY - capsuleRadius, start.Z);
@@ -37,14 +37,14 @@ bool GetAvoidingLeftPoint(UWorld* world, const FHitResult& obstacle, FVector sta
     return !world->OverlapAnyTestByObjectType(avoidingPoint, FQuat::Identity, FCollisionObjectQueryParams(ECC_TO_BITFIELD(ECC_WorldStatic) | ECC_TO_BITFIELD(COLLISION_DEATH_OBJECT)), actorCapsule->GetCollisionShape());
 }
 
-bool GetAvoidingRightPoint(UWorld* world, const FHitResult& obstacle, FVector start, UCapsuleComponent* actorCapsule, FVector& avoidingPoint)
+bool GetAvoidingRightPoint(UWorld *world, const FHitResult &obstacle, FVector start, UCapsuleComponent *actorCapsule, FVector &avoidingPoint)
 {
-    float capsuleRadius = actorCapsule->GetScaledCapsuleRadius() + 1;
-    FBox box = obstacle.GetActor()->GetComponentsBoundingBox();
-    float minX = box.Min.X;
-    float maxX = box.Max.X;
-    float minY = box.Min.Y;
-    float maxY = box.Max.Y;
+    auto capsuleRadius = actorCapsule->GetScaledCapsuleRadius() + 1;
+    auto box = obstacle.GetActor()->GetComponentsBoundingBox();
+    auto minX = box.Min.X;
+    auto maxX = box.Max.X;
+    auto minY = box.Min.Y;
+    auto maxY = box.Max.Y;
     if (start.X >= minX && start.Y < minY)
     {
         avoidingPoint = FVector(minX - capsuleRadius, minY - capsuleRadius, start.Z);
@@ -64,8 +64,7 @@ bool GetAvoidingRightPoint(UWorld* world, const FHitResult& obstacle, FVector st
     return !world->OverlapAnyTestByObjectType(avoidingPoint, FQuat::Identity, FCollisionObjectQueryParams(ECC_TO_BITFIELD(ECC_WorldStatic) | ECC_TO_BITFIELD(COLLISION_DEATH_OBJECT)), actorCapsule->GetCollisionShape());
 }
 
-
-thread_local int depthRecursion = 0;
+thread_local auto depthRecursion = 0;
 
 bool FindPathToLocationLeft(UWorld *world, FVector start, FVector target, FVector up, UCapsuleComponent *actorCapsule, TArray<FVector> &points, float &distance)
 {
@@ -76,7 +75,7 @@ bool FindPathToLocationLeft(UWorld *world, FVector start, FVector target, FVecto
     depthRecursion += 1;
 
     TArray<FHitResult> obstacles;
-    bool hit = SDTUtils::SweepOverlapAgent(world, start, target, actorCapsule->GetCollisionShape(), obstacles);
+    auto hit = SDTUtils::SweepOverlapAgent(world, start, target, actorCapsule->GetCollisionShape(), obstacles);
     if (hit)
     {
         FVector avoidingPoint;
@@ -102,7 +101,7 @@ bool FindPathToLocationLeft(UWorld *world, FVector start, FVector target, FVecto
     }
 }
 
-bool FindPathToLocationRight(UWorld *world, FVector start, FVector target, FVector up, UCapsuleComponent *actorCapsule, TArray<FVector> &points, float& distance)
+bool FindPathToLocationRight(UWorld *world, FVector start, FVector target, FVector up, UCapsuleComponent *actorCapsule, TArray<FVector> &points, float &distance)
 {
     if (depthRecursion > 4)
     {
@@ -111,7 +110,7 @@ bool FindPathToLocationRight(UWorld *world, FVector start, FVector target, FVect
     depthRecursion += 1;
 
     TArray<FHitResult> obstacles;
-    bool hit = SDTUtils::SweepOverlapAgent(world, start, target, actorCapsule->GetCollisionShape(), obstacles);
+    auto hit = SDTUtils::SweepOverlapAgent(world, start, target, actorCapsule->GetCollisionShape(), obstacles);
     if (hit)
     {
         FVector avoidingPoint;
@@ -136,7 +135,6 @@ bool FindPathToLocationRight(UWorld *world, FVector start, FVector target, FVect
         return true;
     }
 }
-
 
 bool SDTUtils::BlockingRayAgent(UWorld *world, FVector startPoint, FVector targetPoint)
 {
@@ -169,16 +167,15 @@ bool SDTUtils::SweepBlockingAgent(UWorld *world, FVector startPoint, FVector tar
 bool SDTUtils::DetectTargetsFromAgent(UWorld *world, FVector startPoint, FVector viewDistanceDirection, float halfAngle, TArray<FOverlapResult> &overlapData)
 {
     FCollisionQueryParams traceParams(FName(TEXT("Agent Trace")), true);
-    float radius = viewDistanceDirection.Size();
-    FCollisionShape neighborsSphere = FCollisionShape().MakeSphere(radius);
+    auto radius = viewDistanceDirection.Size();
+    auto neighborsSphere = FCollisionShape().MakeSphere(radius);
     FCollisionObjectQueryParams objectQueryParams(ECC_TO_BITFIELD(COLLISION_PLAYER) | ECC_TO_BITFIELD(COLLISION_COLLECTIBLE));
 
     if (world->OverlapMultiByObjectType(overlapData, startPoint, FQuat::Identity, objectQueryParams, neighborsSphere))
     {
-        overlapData = overlapData.FilterByPredicate([&](auto& overlap) -> auto {
-            return IsInVisionCone(startPoint, overlap.GetActor()->GetActorLocation(), viewDistanceDirection, halfAngle) &&
-              !BlockingRayAgent(world, startPoint, overlap.GetActor()->GetActorLocation());
-        });
+        overlapData = overlapData.FilterByPredicate([&](auto &overlap) -> auto
+                                                    { return IsInVisionCone(startPoint, overlap.GetActor()->GetActorLocation(), viewDistanceDirection, halfAngle) &&
+                                                             !BlockingRayAgent(world, startPoint, overlap.GetActor()->GetActorLocation()); });
         return overlapData.Num() > 0;
     }
     return false;
@@ -187,15 +184,15 @@ bool SDTUtils::DetectTargetsFromAgent(UWorld *world, FVector startPoint, FVector
 bool SDTUtils::FindPathToLocation(UWorld *world, FVector start, FVector target, FVector up, UCapsuleComponent *actorCapsule, TArray<FVector> &points)
 {
     depthRecursion = 0;
-    float distanceLeft = 0.0f;
+    auto distanceLeft = 0.0f;
     TArray<FVector> leftPathPoints;
     leftPathPoints.Add(start);
-    bool leftPathFound = FindPathToLocationLeft(world, start, target, up, actorCapsule, leftPathPoints, distanceLeft);
+    auto leftPathFound = FindPathToLocationLeft(world, start, target, up, actorCapsule, leftPathPoints, distanceLeft);
     depthRecursion = 0;
-    float distanceRight = 0.0f;
+    auto distanceRight = 0.0f;
     TArray<FVector> rightPathPoints;
     rightPathPoints.Add(start);
-    bool rightPathFound = FindPathToLocationRight(world, start, target, up, actorCapsule, rightPathPoints, distanceRight);
+    auto rightPathFound = FindPathToLocationRight(world, start, target, up, actorCapsule, rightPathPoints, distanceRight);
 
     if (leftPathFound && rightPathFound)
     {
@@ -220,11 +217,11 @@ bool SDTUtils::FindPathToLocation(UWorld *world, FVector start, FVector target, 
 
 bool SDTUtils::IsPlayerPoweredUp(UWorld *world)
 {
-    ACharacter *playerCharacter = UGameplayStatics::GetPlayerCharacter(world, 0);
+    auto playerCharacter = UGameplayStatics::GetPlayerCharacter(world, 0);
     if (!playerCharacter)
         return false;
 
-    ASoftDesignTrainingMainCharacter *castedPlayerCharacter = Cast<ASoftDesignTrainingMainCharacter>(playerCharacter);
+    auto castedPlayerCharacter = Cast<ASoftDesignTrainingMainCharacter>(playerCharacter);
     if (!castedPlayerCharacter)
         return false;
 
@@ -233,9 +230,9 @@ bool SDTUtils::IsPlayerPoweredUp(UWorld *world)
 
 bool SDTUtils::IsInVisionCone(const FVector &start, const FVector &point, const FVector &viewDistanceDirection, float halfAngle)
 {
-    FVector towardsPoint = point - start;
-    float distance = viewDistanceDirection.Size();
-    float distanceAlongCone = towardsPoint.Dot(viewDistanceDirection) / distance;
+    auto towardsPoint = point - start;
+    auto distance = viewDistanceDirection.Size();
+    auto distanceAlongCone = towardsPoint.Dot(viewDistanceDirection) / distance;
     return CosineVectors(towardsPoint, viewDistanceDirection) < halfAngle && distanceAlongCone >= 0 && distanceAlongCone <= distance;
 }
 

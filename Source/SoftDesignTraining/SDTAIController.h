@@ -42,7 +42,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float RotationAngleBySecond = 200;
 
-
 private:
     enum class ObjectiveType
     {
@@ -107,7 +106,7 @@ private:
     FVector TargetMoveTo;
 
     /// The spline that the agent follows, depending of the value of SplineDistance.
-    USplineComponent* SplineChassing;
+    USplineComponent *SplineChassing;
     /// When different than -1, the agent is assumed to be on the spline and this value represents its progression on the spline.
     float SplineDistance = -1.0f;
 };
