@@ -2,8 +2,9 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
+#include "Components/SplineComponent.h"
 #include "AIController.h"
+#include "CoreMinimal.h"
 
 #include "SDTAIController.generated.h"
 
@@ -16,38 +17,58 @@ class SOFTDESIGNTRAINING_API ASDTAIController : public AAIController
     GENERATED_BODY()
 public:
     virtual void BeginPlay() override;
+
+    virtual void OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result) override;
+
     virtual void Tick(float deltaTime) override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-
     float MaxSpeed = 400.0f;
 
-    float VisionDistance = 500.0f;
+    float VisionDistance = 800.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float VisionAngle = PI / 3.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0, ClampMax = 180.0))
+    double VisionAngle = 60.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float Acceleration = 250.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float ForwardWallRayCastDist = 200.0f;
+    float ForwardWallRayCastDist = 190.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float SidesWallRayCastDist = 300.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float RotationAngleBySecond = 180;
+    float RotationAngleBySecond = 200;
 
 private:
-    void DetectCollectible();
-    void DetectWalls();
-    void SpeedControl(float deltaTime);
-    void Move(float deltaTime);
-    bool IsInVisionCone(UWorld* world, AActor* pawn, AActor* targetActor);
+    enum class ObjectiveType
+    {
+        CHASSING,
+        FLEEING,
+        WALKING
+    };
 
-    bool isForwardHit = false;
-    bool isTurningAround = false;
+    void CalculateFarForwardTarget(FVector headingTarget);
+    void CalculateFarForwardTarget();
+    void DetectObjective(ObjectiveType& objective, FVector& target);
+    //bool DetectCollectible(FVector& targetDirection);
+    bool DetectWalls(FVector& targetDirection, float& collisionDistance);
+    void ResetWallsDetection();
+    void SpeedControl(float deltaTime, float wallCollisionDistance);
+    void Move(float deltaTime, FVector targetDirection);
+    void Move(float deltaTime);
+    //bool IsInVisionCone(UWorld* world, AActor* pawn, AActor* targetActor);
+
+    USplineComponent *chassingSpline;
+    float splineDistance = -1.0f;
     FVector lastImpactNormal = FVector::ZeroVector;
-    int rotationDirection = 0;
+    FVector lastTargetDirectionForWalls = FVector::ZeroVector;
+    int rotationDirection = 1;
+
+    FVector previousRotationAxis = FVector::ZeroVector;
+    FVector targetMoveTo;
+
+    float TargetSpeed = 0.0f;
 };

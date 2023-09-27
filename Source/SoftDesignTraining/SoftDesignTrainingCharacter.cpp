@@ -38,9 +38,9 @@ void ASoftDesignTrainingCharacter::Tick(float deltaTime)
 
     auto world = GetWorld();
     auto loc = GetActorLocation();
-    DrawDebugString(world, loc, timeString, nullptr, FColor::White, 0.0f, true);
-    DrawDebugString(world, loc - FVector::UpVector * 100, pickupString, nullptr, FColor::White, 0.0f, true);
-    DrawDebugString(world, loc - FVector::UpVector * 200, deathString, nullptr, FColor::White, 0.0f, true);
+    DrawDebugString(world, loc - FVector::UpVector * 100, timeString, nullptr, FColor::White, 0.0f, true);
+    DrawDebugString(world, loc - FVector::UpVector * 200, pickupString, nullptr, FColor::White, 0.0f, true);
+    DrawDebugString(world, loc - FVector::UpVector * 300, deathString, nullptr, FColor::White, 0.0f, true);
 }
 
 void ASoftDesignTrainingCharacter::OnBeginOverlap(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComponent, int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult)
