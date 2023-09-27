@@ -7,12 +7,10 @@
 #include "Engine/StaticMeshActor.h"
 #include "SDTCollectible.generated.h"
 
-
-
 UCLASS()
 class SOFTDESIGNTRAINING_API ASDTCollectible : public AStaticMeshActor
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 public:
     ASDTCollectible();
 
@@ -21,7 +19,7 @@ public:
     bool IsOnCooldown();
 
     // The duration taken by the collectible to respawn after being collected by an actor.
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI, meta=(ClampMin = "0.0"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI, meta = (ClampMin = "0.0"))
     float CollectCooldownDuration = 10.f;
 
     // If checked, the collectible will move along the y axis (from left to right) using the specified Acceleration and MaxSpeed.
@@ -47,7 +45,7 @@ public:
     virtual void BeginPlay() override;
 
 private:
-    void Move(float deltaTime, FVector& spherePosAtZero, FVector& spherePotentialHitPoint);
+    void Move(float deltaTime, FVector &spherePosAtZero, FVector &spherePotentialHitPoint);
     void ResetMovementComponents();
 
     FTimerHandle CollectCooldownTimer;

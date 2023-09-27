@@ -34,7 +34,7 @@ void ASoftDesignTrainingMainCharacter::OnBeginOverlap(UPrimitiveComponent *Overl
         if (!IsPoweredUp())
         {
             OnDeath();
-            SetActorLocation(m_StartingPosition);
+            SetActorLocation(StartingPosition);
         }
     }
 }

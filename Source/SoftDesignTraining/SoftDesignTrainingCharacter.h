@@ -22,8 +22,8 @@ protected:
     UFUNCTION()
     virtual void OnBeginOverlap(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComponent, int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult);
 
-    FVector m_StartingPosition;
+    FVector StartingPosition;
 
-    int m_PickupCount = 0;
-    int m_DeathCount = 0;
+    int PickupCount = 0;
+    int DeathCount = 0;
 };
