@@ -65,9 +65,9 @@ public:
     /// \param start The location where to start the path.
     /// \param target The location where to stop the path.
     /// \param actorCapsule The capsule of the agent used for detecting collisions.
-    /// \param points [out] The points that traces a path between start and target.
+    /// \param points [out] The points that traces a path between start and target in world coordinates.
     /// \return True if a path is found, false otherwise.
-    static bool FindPathToLocation(UWorld *world, FVector start, FVector target, FVector up, UCapsuleComponent *actorCapsule, TArray<FSplinePoint> &points);
+    static bool FindPathToLocation(UWorld *world, FVector start, FVector target, FVector up, UCapsuleComponent *actorCapsule, TArray<FVector> &points);
 
     /// Determine if the player has taken a power up.
     /// \param world A valid world pointed used to get the character.

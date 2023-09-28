@@ -52,23 +52,26 @@ private:
 
     void CalculateFarForwardTarget(FVector headingTarget);
     void CalculateFarForwardTarget();
+    void MoveTowardsTarget(FVector target);
     void DetectObjective(ObjectiveType& objective, FVector& target);
     //bool DetectCollectible(FVector& targetDirection);
     bool DetectWalls(FVector& targetDirection, float& collisionDistance);
     void ResetWallsDetection();
     void SpeedControl(float deltaTime, float wallCollisionDistance);
-    void Move(float deltaTime, FVector targetDirection);
+    //void Move(float deltaTime, FVector targetDirection);
     void Move(float deltaTime);
     //bool IsInVisionCone(UWorld* world, AActor* pawn, AActor* targetActor);
 
     USplineComponent *chassingSpline;
-    float splineDistance = -1.0f;
+    float SplineDistance = -1.0f;
     FVector lastImpactNormal = FVector::ZeroVector;
     FVector lastTargetDirectionForWalls = FVector::ZeroVector;
     int rotationDirection = 1;
 
     FVector previousRotationAxis = FVector::ZeroVector;
     FVector targetMoveTo;
+
+    FVector ActiveDirectionTarget = FVector::ZeroVector;
 
     float TargetSpeed = 0.0f;
 };

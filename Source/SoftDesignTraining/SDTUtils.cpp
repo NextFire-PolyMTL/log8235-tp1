@@ -67,7 +67,7 @@ bool GetAvoidingRightPoint(UWorld* world, const FHitResult& obstacle, FVector st
 
 thread_local int depthRecursion = 0;
 
-bool FindPathToLocationLeft(UWorld *world, FVector start, FVector target, FVector up, UCapsuleComponent *actorCapsule, TArray<FSplinePoint> &points, float &distance)
+bool FindPathToLocationLeft(UWorld *world, FVector start, FVector target, FVector up, UCapsuleComponent *actorCapsule, TArray<FVector> &points, float &distance)
 {
     if (depthRecursion > 4)
     {
@@ -82,7 +82,7 @@ bool FindPathToLocationLeft(UWorld *world, FVector start, FVector target, FVecto
         FVector avoidingPoint;
         if (GetAvoidingLeftPoint(world, obstacles[0], start, actorCapsule, avoidingPoint))
         {
-            points.Add(FSplinePoint(points.Num() + 1, avoidingPoint));
+            points.Add(avoidingPoint);
             if (FindPathToLocationLeft(world, avoidingPoint, target, up, actorCapsule, points, distance))
             {
                 distance += (avoidingPoint - start).Size();
@@ -97,12 +97,12 @@ bool FindPathToLocationLeft(UWorld *world, FVector start, FVector target, FVecto
     }
     else
     {
-        points.Add(FSplinePoint(points.Num() + 1, target));
+        points.Add(target);
         return true;
     }
 }
 
-bool FindPathToLocationRight(UWorld *world, FVector start, FVector target, FVector up, UCapsuleComponent *actorCapsule, TArray<FSplinePoint> &points, float& distance)
+bool FindPathToLocationRight(UWorld *world, FVector start, FVector target, FVector up, UCapsuleComponent *actorCapsule, TArray<FVector> &points, float& distance)
 {
     if (depthRecursion > 4)
     {
@@ -117,7 +117,7 @@ bool FindPathToLocationRight(UWorld *world, FVector start, FVector target, FVect
         FVector avoidingPoint;
         if (GetAvoidingRightPoint(world, obstacles[0], start, actorCapsule, avoidingPoint))
         {
-            points.Add(FSplinePoint(points.Num() + 1, avoidingPoint));
+            points.Add(avoidingPoint);
             if (FindPathToLocationRight(world, avoidingPoint, target, up, actorCapsule, points, distance))
             {
                 distance += (avoidingPoint - start).Size();
@@ -132,7 +132,7 @@ bool FindPathToLocationRight(UWorld *world, FVector start, FVector target, FVect
     }
     else
     {
-        points.Add(FSplinePoint(points.Num() + 1, target));
+        points.Add(target);
         return true;
     }
 }
@@ -184,17 +184,17 @@ bool SDTUtils::DetectTargetsFromAgent(UWorld *world, FVector startPoint, FVector
     return false;
 }
 
-bool SDTUtils::FindPathToLocation(UWorld *world, FVector start, FVector target, FVector up, UCapsuleComponent *actorCapsule, TArray<FSplinePoint> &points)
+bool SDTUtils::FindPathToLocation(UWorld *world, FVector start, FVector target, FVector up, UCapsuleComponent *actorCapsule, TArray<FVector> &points)
 {
     depthRecursion = 0;
     float distanceLeft = 0.0f;
-    TArray<FSplinePoint> leftPathPoints;
-    leftPathPoints.Add(FSplinePoint(1.0f, start));
+    TArray<FVector> leftPathPoints;
+    leftPathPoints.Add(start);
     bool leftPathFound = FindPathToLocationLeft(world, start, target, up, actorCapsule, leftPathPoints, distanceLeft);
     depthRecursion = 0;
     float distanceRight = 0.0f;
-    TArray<FSplinePoint> rightPathPoints;
-    rightPathPoints.Add(FSplinePoint(1.0f, start));
+    TArray<FVector> rightPathPoints;
+    rightPathPoints.Add(start);
     bool rightPathFound = FindPathToLocationRight(world, start, target, up, actorCapsule, rightPathPoints, distanceRight);
 
     if (leftPathFound && rightPathFound)
