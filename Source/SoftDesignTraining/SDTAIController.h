@@ -34,7 +34,7 @@ public:
     float Acceleration = 250.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float ForwardWallRayCastDist = 190.0f;
+    float ForwardWallRayCastDist = 150.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float SidesWallRayCastDist = 300.0f;
