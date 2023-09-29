@@ -220,10 +220,10 @@ void ASDTAIController::Tick(float deltaTime)
             }
         }
      
-        //Si l'agent detecte un mur, on suit la direction parallèle au mur: ici on privilégie la fuite vis-à-vis d'éventuelle coin que celle vis-à-vis du joueur.
+        //Si l'agent detecte un mur, on suit la direction parallèle au mur dans le sens où le joueur se dirige
         if (parallelWallDirection!=FVector::ZeroVector)
         {
-            /*
+            
             auto directionToTarget = GetCharacter()->GetActorLocation() - target;
             directionToTarget.Normalize();
             if (directionToTarget.Dot(parallelWallDirection) < 0)
@@ -234,8 +234,7 @@ void ASDTAIController::Tick(float deltaTime)
             {
                 ActiveDirectionTarget = parallelWallDirection;
             }
-            */
-            ActiveDirectionTarget = parallelWallDirection;
+            
         }
 
         
