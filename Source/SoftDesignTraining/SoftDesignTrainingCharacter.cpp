@@ -11,8 +11,8 @@ ASoftDesignTrainingCharacter::ASoftDesignTrainingCharacter()
 {
     GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 
-    //auto spline = UObject::CreateDefaultSubobject<USplineComponent>(FName(EName::AI));
-    //spline->SetupAttachment(RootComponent);
+    // auto spline = UObject::CreateDefaultSubobject<USplineComponent>(FName(EName::AI));
+    // spline->SetupAttachment(RootComponent);
 }
 
 void ASoftDesignTrainingCharacter::BeginPlay()
@@ -65,7 +65,10 @@ void ASoftDesignTrainingCharacter::OnBeginOverlap(UPrimitiveComponent *Overlappe
     else if (ASoftDesignTrainingMainCharacter *mainCharacter = Cast<ASoftDesignTrainingMainCharacter>(OtherActor))
     {
         if (mainCharacter->IsPoweredUp())
+        {
+            OnDeath();
             SetActorLocation(m_StartingPosition);
+        }
     }
 }
 

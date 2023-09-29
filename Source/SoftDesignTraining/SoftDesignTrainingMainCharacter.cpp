@@ -14,7 +14,7 @@ ASoftDesignTrainingMainCharacter::ASoftDesignTrainingMainCharacter()
     m_CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
     m_CameraBoom->SetupAttachment(RootComponent);
     m_CameraBoom->SetUsingAbsoluteRotation(true);
-    //m_CameraBoom->bAbsoluteRotation = true; // Don't want arm to rotate when character does
+    // m_CameraBoom->bAbsoluteRotation = true; // Don't want arm to rotate when character does
     m_CameraBoom->TargetArmLength = 800.f;
     m_CameraBoom->SetRelativeRotation(FRotator(-60.f, 0.f, 0.f));
     m_CameraBoom->bDoCollisionTest = false; // Don't want to pull camera in when it collides with level
@@ -25,15 +25,17 @@ ASoftDesignTrainingMainCharacter::ASoftDesignTrainingMainCharacter()
     m_TopDownCameraComponent->bUsePawnControlRotation = false; // Camera does not rotate relative to arm;
 }
 
-void ASoftDesignTrainingMainCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void ASoftDesignTrainingMainCharacter::OnBeginOverlap(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComponent, int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult)
 {
     Super::OnBeginOverlap(OverlappedComponent, OtherActor, OtherComponent, OtherBodyIndex, bFromSweep, SweepResult);
 
-    if (ASoftDesignTrainingCharacter* character = Cast<ASoftDesignTrainingCharacter>(OtherActor))
+    if (ASoftDesignTrainingCharacter *character = Cast<ASoftDesignTrainingCharacter>(OtherActor))
     {
         if (!IsPoweredUp())
+        {
             OnDeath();
             SetActorLocation(m_StartingPosition);
+        }
     }
 }
 
