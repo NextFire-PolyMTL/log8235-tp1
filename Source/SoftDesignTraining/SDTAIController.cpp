@@ -8,20 +8,65 @@
 const float collisionDurationDebug = 5.0f;
 
 
-void ASDTAIController::CalculateFarForwardTarget(FVector headingTarget)
+FColor ColorIfHit(bool hit)
 {
-    auto character = GetCharacter();
-    float distance = 10000.0f;
-    FHitResult hitResult;
+    return hit ? FColor::Red : FColor::Green;
+}
 
-    targetMoveTo = GetCharacter()->GetActorLocation() + distance * headingTarget;
-    if (SDTUtils::BlockingRayAgent(GetWorld(), character->GetActorLocation(), targetMoveTo, hitResult))
+float ThicknessIfHit(bool hit)
+{
+    return hit ? 5.0f : 0.0f;
+}
+
+FString PathFollowingResultToString(EPathFollowingResult::Type result)
+{
+    switch (result)
     {
-        // This is to ensure to set a target point and to avoid an infinite recursion between MoveToLocation and OnMoveCompleted.
-        distance = FMath::Max(hitResult.Distance, 200);
-        targetMoveTo = GetCharacter()->GetActorLocation() + distance * headingTarget;
+    case EPathFollowingResult::Aborted:
+        return "Aborted";
+
+    case EPathFollowingResult::Blocked:
+        return "Blocked";
+
+    case EPathFollowingResult::Invalid:
+        return "Invalid";
+
+    case EPathFollowingResult::OffPath:
+        return "OffPath";
+
+    case EPathFollowingResult::Success:
+        return "Success";
+
+    default:
+        return FString::FromInt(result);
     }
-    MoveToLocation(targetMoveTo, -1, true, false, false);
+}
+
+void ASDTAIController::SetTarget(FVector target, float minimumDistance)
+{
+    auto actorLocation = GetCharacter()->GetActorLocation();
+    auto movementActorTarget = target - actorLocation;
+    auto movementSize = movementActorTarget.Size();
+
+    // Extend the target to be at a distance of at least minimumDistance from the actor.
+    // Having a minimum distance prevents the call to MoveToLocation to complete immediately with Success. When there is a Success, the
+    // velocity resets to 0 immediately and we want to avoid that.
+    TargetMoveTo = movementSize < minimumDistance ? actorLocation + movementActorTarget * (minimumDistance / movementSize) : target;
+
+    MoveToLocation(TargetMoveTo, -1, true, false, false);
+}
+
+void ASDTAIController::CalculateFarForwardTarget(FVector headingDirection, float maximumDistance)
+{
+    auto actorLocation = GetCharacter()->GetActorLocation();
+    auto target = actorLocation + maximumDistance * headingDirection;
+
+    FHitResult hitResult;
+    if (SDTUtils::BlockingRayAgent(GetWorld(), actorLocation, target, hitResult))
+    {
+        target = GetCharacter()->GetActorLocation() + hitResult.Distance * headingDirection;
+    }
+    SetTarget(target);
 }
 
 void ASDTAIController::CalculateFarForwardTarget()
@@ -32,20 +77,32 @@ void ASDTAIController::CalculateFarForwardTarget()
 void ASDTAIController::BeginPlay()
 {
     Super::BeginPlay();
-    chassingSpline = Cast<USplineComponent>(AddComponentByClass(USplineComponent::StaticClass(), false, FTransform::Identity, false));
-    chassingSpline->ClearSplinePoints();
-    chassingSpline->SetDrawDebug(true);
+
+    // This spline is used when there is an obstacle that needs to be avoided. It is created dynamically because the AIController logic
+    // absolutely needs a USplineComponent to work. If we would get such a component from the Character, we don't know if there is an existing spline
+    // component on the character. If the USplineComponent is created on the AIController itself, it seems to be deleted after a while and the program crashes.
+    // Also, if not created on the character, the debug draw of the spline does not work well.
+    SplineChassing = Cast<USplineComponent>(GetCharacter()->AddComponentByClass(USplineComponent::StaticClass(), false, FTransform::Identity, false));
+    SplineChassing->ClearSplinePoints();
+    SplineChassing->SetDrawDebug(true);
+    SplineChassing->SetAbsolute(true, true, true);
+
     auto character = GetCharacter();
     auto moveComp = character->GetCharacterMovement();
-    moveComp->MaxAcceleration = Acceleration;
+    moveComp->MaxWalkSpeed = MaxSpeed;
     CalculateFarForwardTarget();
 }
 
 
-void ASDTAIController::OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result)
+void ASDTAIController::OnMoveCompleted(FAIRequestID requestID, EPathFollowingResult::Type result)
 {
-    if (Result != EPathFollowingResult::Aborted)
+    if (result != EPathFollowingResult::Aborted)
     {
+        // That should not happen since we always set a new location before the actor reaches the destination specified in MoveToLocation.
+        // However, IF it happens, we will restart a movement of the actor in straight line.
+        // Note there is a recursion danger if inside OnMoveCompleted we call MoveToLocation with a point where the actor is already at
+        // because OnMoveCompleted will be called again immediately with EPathFollowingResult::Success.
+        GEngine->AddOnScreenDebugMessage(INDEX_NONE, 3.0f, FColor::Black, FString("Path Following Result: ") + PathFollowingResultToString(result));
         CalculateFarForwardTarget();
     }
 }
@@ -53,96 +110,139 @@ void ASDTAIController::OnMoveCompleted(FAIRequestID RequestID, EPathFollowingRes
 void ASDTAIController::Tick(float deltaTime)
 {
     Super::Tick(deltaTime);
-    FVector targetDirection = FVector::ZeroVector;
-    bool followSpline = false;
     float wallCollisionDistance = -1.0f;
     FVector target = FVector::ZeroVector;
+    FVector parallelWallDirection = FVector::ZeroVector;
     ObjectiveType objective;
 
-    if (splineDistance != -1.0f && splineDistance <= chassingSpline->GetSplineLength() / 2)
+    DetectObjective(objective, target);
+    if (objective != CurrentObjective)
     {
-        followSpline = true;
-    }
-    else
-    {
-        DetectObjective(objective, target);
-        switch (objective)
+        switch (CurrentObjective)
         {
         case ObjectiveType::CHASSING:
-        {
+            SplineChassing->ClearSplinePoints(true);
+            SplineDistance = -1.0f;
+            break;
+
+        case ObjectiveType::WALKING:
             ResetWallsDetection();
-            TArray<FSplinePoint> pathPoints;
+            break;
+
+        case ObjectiveType::FLEEING:
+            ResetWallsDetection();
+            break;
+        }
+
+        CurrentObjective = objective;
+    }
+
+
+    switch (objective)
+    {
+    case ObjectiveType::CHASSING:
+    {
+        // Check if we already calculated a spline.
+        if (SplineDistance != -1.0f)
+        {
+            TArray<FHitResult> obstacles;
+            // Check if we have a direct path to the target. If yes, stop following the spline.
+            if (!SDTUtils::SweepOverlapAgent(GetWorld(), GetCharacter()->GetActorLocation(), target, GetCharacter()->GetCapsuleComponent()->GetCollisionShape(), obstacles))
+            {
+                DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Chassing direct", nullptr, FColor::Green, 0.0f, true);
+                SplineDistance = -1.0f;
+                ActiveDirectionTarget = target - GetCharacter()->GetActorLocation();
+                ActiveDirectionTarget.Normalize();
+            }
+            else
+            {
+                // Follow the spline. We assume that the spline does not hit anything.
+                DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Chassing spline", nullptr, FColor::Green, 0.0f, true);
+                UpdateTargetPositionOnSpline(deltaTime);
+            }
+        }
+        else
+        {
+            TArray<FVector> pathPoints;
+            target.Z = GetCharacter()->GetActorLocation().Z;
+            // Find a path to the target.
             if (SDTUtils::FindPathToLocation(GetWorld(), GetCharacter()->GetActorLocation(), target, GetCharacter()->GetActorUpVector(), GetCharacter()->GetCapsuleComponent(), pathPoints))
             {
                 if (pathPoints.Num() <= 2)
                 {
+                    // We can go directly onto the target.
                     DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Chassing direct", nullptr, FColor::Green, 0.0f, true);
-                    targetDirection = target - GetCharacter()->GetActorLocation();
-                    targetDirection.Normalize();
+                    ActiveDirectionTarget = target - GetCharacter()->GetActorLocation();
+                    ActiveDirectionTarget.Normalize();
                 }
                 else
                 {
+                    // Create a spline to reach the target.
                     DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Chassing spline", nullptr, FColor::Green, 0.0f, true);
-                    for (auto path : pathPoints)
+                    SplineChassing->ClearSplinePoints(false);
+                    SplineChassing->SetSplinePoints(pathPoints, ESplineCoordinateSpace::World, true);
+                    auto totalLength = SplineChassing->GetSplineLength();
+                    for (auto length = 0; length <= totalLength; length = length + totalLength / 10)
                     {
-                        DrawDebugPoint(GetWorld(), path.Position, 5.0f, FColor::Green, false, 10.0f);
+                       DrawDebugPoint(GetWorld(), SplineChassing->GetWorldLocationAtDistanceAlongSpline(length), 5.0f, FColor::Blue, false, 5.0f);
                     }
-                    followSpline = true;
-                    chassingSpline->ClearSplinePoints(false);
-                    chassingSpline->AddPoints(pathPoints);
-                    splineDistance = 0.0f;
+                    SplineDistance = GetCharacter()->GetCapsuleComponent()->GetScaledCapsuleRadius();
+                    UpdateTargetPositionOnSpline(deltaTime);
                 }
             }
             else
             {
-                // TODO: Move to the closest point before the collision in straight line?
+                DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Chassing no path", nullptr, FColor::Green, 0.0f, true);
+                DetectWalls(parallelWallDirection, wallCollisionDistance);
+                if (parallelWallDirection != FVector::ZeroVector)
+                {
+                    ActiveDirectionTarget = parallelWallDirection;
+                }
             }
-            break;
         }
 
-        case ObjectiveType::FLEEING:
+        break;
+    }
+
+    case ObjectiveType::FLEEING:
+        DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Fleeing", nullptr, FColor::Green, 0.0f, true);
+        DetectWalls(parallelWallDirection, wallCollisionDistance);
+        ActiveDirectionTarget = GetCharacter()->GetActorLocation() - target;
+        ActiveDirectionTarget.Normalize();
+        if (DetectWalls(parallelWallDirection, wallCollisionDistance))
         {
-            DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Fleeing", nullptr, FColor::Green, 0.0f, true);
-
-            chassingSpline->ClearSplinePoints(true);
-            splineDistance = -1.0f;
-
-            FVector parallelWallDirection;
-            FVector fleeDirection = target - GetCharacter()->GetActorLocation();
-            fleeDirection.Normalize();
-            if (DetectWalls(parallelWallDirection, wallCollisionDistance))
+            if (ActiveDirectionTarget.Dot(parallelWallDirection) < 0)
             {
-                if (fleeDirection.Dot(parallelWallDirection) < 0)
-                {
-                    fleeDirection = -parallelWallDirection;
-                }
+                ActiveDirectionTarget = -parallelWallDirection;
             }
         }
         break;
 
-        case ObjectiveType::WALKING:
-            DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Walking", nullptr, FColor::Green, 0.0f, true);
-
-            chassingSpline->ClearSplinePoints(true);
-            splineDistance = -1.0f;
-
-            DetectWalls(targetDirection, wallCollisionDistance);
-            break;
+    case ObjectiveType::WALKING:
+        DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Walking", nullptr, FColor::Green, 0.0f, true);
+        DetectWalls(parallelWallDirection, wallCollisionDistance);
+        if (parallelWallDirection != FVector::ZeroVector)
+        {
+            ActiveDirectionTarget = parallelWallDirection;
         }
+        break;
     }
+
 
     SpeedControl(deltaTime, wallCollisionDistance);
-    if (followSpline)
+    Move(deltaTime);
+
+    // debug print
+    auto character = GetCharacter();
+    DrawDebugPoint(GetWorld(), TargetMoveTo, 10.0f, FColor::Red);
+    if (ActiveDirectionTarget != FVector::ZeroVector)
     {
-        Move(deltaTime);
+        DrawDebugDirectionalArrow(GetWorld(), character->GetActorLocation(), character->GetActorLocation() + ActiveDirectionTarget * 100.0f, 1.0f, FColor::Blue, false, -1.0f, 0U, 6.0f);
     }
-    else
-    {
-        Move(deltaTime, targetDirection);
-    }
+    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Yellow, FString::Printf(TEXT("[%s] Velocity: %f cm/s"), *character->GetName(), character->GetVelocity().Size()));
 }
 
-bool ASDTAIController::DetectWalls(FVector& targetDirection, float& collisionDistance)
+bool ASDTAIController::DetectWalls(FVector &targetDirection, float &collisionDistance)
 {
     auto world = GetWorld();
     auto character = GetCharacter();
@@ -163,11 +263,11 @@ bool ASDTAIController::DetectWalls(FVector& targetDirection, float& collisionDis
         // For the first impact normal encountered, take one decision on the rotation side and stick to it.
         // For each subsequent different impact normal encountered during the rotation, determine another target direction,
         // but stick to the same rotation side to avoid to stay stuck in a corner.
-        if (!lastImpactNormal.Equals(forwardHit.ImpactNormal))
+        if (!LastImpactNormal.Equals(forwardHit.ImpactNormal))
         {
-            GEngine->AddOnScreenDebugMessage(INDEX_NONE, 1.0f, FColor::Blue, FString::Printf(TEXT("LastNormal: %s, NewNormal: %s, Angle is: %f"), *lastImpactNormal.ToString(), *forwardHit.ImpactNormal.ToString(), SDTUtils::CosineVectors(lastImpactNormal, forwardHit.ImpactNormal)));
-            bool isNewWallDetection = lastImpactNormal == FVector::ZeroVector;
-            lastImpactNormal = forwardHit.ImpactNormal;
+            //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 1.0f, FColor::Blue, FString::Printf(TEXT("LastNormal: %s, NewNormal: %s, Angle is: %f"), *lastImpactNormal.ToString(), *forwardHit.ImpactNormal.ToString(), SDTUtils::CosineVectors(lastImpactNormal, forwardHit.ImpactNormal)));
+            bool isNewWallDetection = LastImpactNormal == FVector::ZeroVector;
+            LastImpactNormal = forwardHit.ImpactNormal;
 
             // Calculate the cross product to get a horizontal vector on the plane of the wall pointing to the right.
             auto upVector = character->GetActorUpVector();
@@ -176,7 +276,7 @@ bool ASDTAIController::DetectWalls(FVector& targetDirection, float& collisionDis
             if (!isNewWallDetection)
             {
                 // Stick on the same rotation side when detecting any subsequent walls. This is to avoid to stay stuck in a corner.
-                lastTargetDirectionForWalls = rotationDirection * parallelHitDirection;
+                targetDirection = RotationDirection * parallelHitDirection;
             }
             else
             {
@@ -197,43 +297,36 @@ bool ASDTAIController::DetectWalls(FVector& targetDirection, float& collisionDis
                     // Turn to the direction where there is more space between the walls.
                     if (parallelHitSide1[0].Distance > parallelHitSide2[0].Distance)
                     {
-                        rotationDirection = 1;
-                        //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Walls on both sides. Direction is ") + FString::FromInt(rotationDirection));
+                        RotationDirection = 1;
                     }
                     else
                     {
-                        rotationDirection = -1;
-                        //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Walls on both sides. Direction is ") + FString::FromInt(rotationDirection));
+                        RotationDirection = -1;
                     }
                 }
                 else if (isParallelHitSide1)
                 {
-                    rotationDirection = -1;
-                    //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Wall on right side only. Direction is ") + FString::FromInt(rotationDirection));
+                    RotationDirection = -1;
                 }
                 else if (isParallelHitSide2)
                 {
-                    rotationDirection = 1;
-                    //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Wall on left side only. Direction is ") + FString::FromInt(rotationDirection));
+                    RotationDirection = 1;
                 }
                 // If the actor approximately faces the wall, choose a random direction.
                 else if (-0.05f < productForwardAndNormal && productForwardAndNormal < 0.05f)
                 {
-                    rotationDirection = FMath::RandBool() ? 1 : -1;
-                    //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Random Direction Chosen is ") + FString::FromInt(rotationDirection));
+                    RotationDirection = FMath::RandBool() ? 1 : -1;
                 }
                 else
                 {
-                    lastTargetDirectionForWalls = FMath::Sign(productForwardAndNormal) * parallelHitDirection;
-                    rotationDirection = FMath::Sign(productForwardAndNormal);
-                    //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.0, FColor::Blue, FString("Direction is ") + FString::FromInt(rotationDirection));
+                    RotationDirection = FMath::Sign(productForwardAndNormal);
                 }
-                lastTargetDirectionForWalls = rotationDirection * parallelHitDirection;
+                targetDirection = RotationDirection * parallelHitDirection;
 
 
-                DrawDebugLine(world, impactPointWithCapsule, impactPointWithCapsule + forwardVector * ForwardWallRayCastDist, FColor::Red, false, collisionDurationDebug, 0, isForwardHit ? 5.0f : 0.0f);
-                DrawDebugLine(world, impactPointWithCapsule, impactPointWithCapsule + parallelHitDirection * SidesWallRayCastDist, FColor::Red, false, collisionDurationDebug, 0, isParallelHitSide1 ? 5.0f : 0.0f);
-                DrawDebugLine(world, impactPointWithCapsule, impactPointWithCapsule - parallelHitDirection * SidesWallRayCastDist, FColor::Red, false, collisionDurationDebug, 0, isParallelHitSide2 ? 5.0f : 0.0f);
+                DrawDebugLine(world, impactPointWithCapsule, impactPointWithCapsule + forwardVector * ForwardWallRayCastDist, ColorIfHit(isForwardHit), false, collisionDurationDebug, 0, ThicknessIfHit(isForwardHit));
+                DrawDebugLine(world, impactPointWithCapsule, impactPointWithCapsule + parallelHitDirection * SidesWallRayCastDist, ColorIfHit(isParallelHitSide1), false, collisionDurationDebug, 0, ThicknessIfHit(isParallelHitSide1));
+                DrawDebugLine(world, impactPointWithCapsule, impactPointWithCapsule - parallelHitDirection * SidesWallRayCastDist, ColorIfHit(isParallelHitSide2), false, collisionDurationDebug, 0, ThicknessIfHit(isParallelHitSide2));
                 DrawDebugDirectionalArrow(world, forwardHit.ImpactPoint, (forwardHit.ImpactPoint + forwardHit.ImpactNormal * 100.0), 5.0f, FColor::Green, false, collisionDurationDebug, 0, 2.0f);
                 DrawDebugDirectionalArrow(world, forwardHit.ImpactPoint, (forwardHit.ImpactPoint + upVector * 100.0), 5.0f, FColor::Blue, false, collisionDurationDebug, 0, 2.0f);
                 DrawDebugDirectionalArrow(world, forwardHit.ImpactPoint, (forwardHit.ImpactPoint + parallelHitDirection * 100.0), 5.0f, FColor::Magenta, false, collisionDurationDebug, 0, 2.0f);
@@ -242,19 +335,12 @@ bool ASDTAIController::DetectWalls(FVector& targetDirection, float& collisionDis
                 DrawDebugBox(world, hitComponent->Bounds.Origin, hitComponent->Bounds.BoxExtent, FColor::Green, false, collisionDurationDebug);
             }
         }
-        targetDirection = lastTargetDirectionForWalls;
 
-        return true;
-    }
-    else if (!forwardVector.Equals(lastTargetDirectionForWalls))
-    {
-        targetDirection = lastTargetDirectionForWalls;
         return true;
     }
     else
     {
-        lastTargetDirectionForWalls = FVector::ZeroVector;
-        lastImpactNormal = FVector::ZeroVector;
+        LastImpactNormal = FVector::ZeroVector;
     }
 
     return false;
@@ -262,59 +348,61 @@ bool ASDTAIController::DetectWalls(FVector& targetDirection, float& collisionDis
 
 void ASDTAIController::ResetWallsDetection()
 {
-    lastImpactNormal = FVector::ZeroVector;
-    lastTargetDirectionForWalls = FVector::ZeroVector;
+    LastImpactNormal = FVector::ZeroVector;
 }
 
-void ASDTAIController::Move(float deltaTime, FVector targetDirection)
+void ASDTAIController::UpdateTargetPositionOnSpline(float deltaTime)
 {
-    auto character = GetCharacter();
-    FVector forward = character->GetActorForwardVector();
-    if (targetDirection != FVector::ZeroVector)
+    auto totalSplineLength = SplineChassing->GetSplineLength();
+    SplineDistance = SplineDistance + GetCharacter()->GetCharacterMovement()->MaxWalkSpeed * deltaTime;
+    if (SplineDistance >= totalSplineLength)
     {
-        //float angle = SDTUtils::CosineVectors(forward, targetDirection);
-        if (FVector::Parallel(forward, targetDirection) && forward.Dot(targetDirection) > 0)
-        {
-            CalculateFarForwardTarget(targetDirection);
-            previousRotationAxis = FVector::ZeroVector;
-        }
-        else
-        {
-            FVector rotationAxis = forward.Cross(targetDirection);
-            if (rotationAxis.IsNearlyZero())
-            {
-                rotationAxis = character->GetActorUpVector();
-            }
-            else
-            {
-                rotationAxis.Normalize();
-            }
-            DrawDebugDirectionalArrow(GetWorld(), character->GetActorLocation(), character->GetActorLocation() + rotationAxis * 100.0f, 3.0f, FColor::Red, false, -1.0f, 0U, 6.0f);
-            FVector nextDirection = forward.RotateAngleAxis(RotationAngleBySecond * deltaTime, rotationAxis);
-            CalculateFarForwardTarget(nextDirection);
-            previousRotationAxis = rotationAxis;
-        }
+        SplineDistance = -1.0f;
+        ActiveDirectionTarget = GetCharacter()->GetActorForwardVector();
     }
-
-    // debug print
-    DrawDebugPoint(GetWorld(), targetMoveTo, 5.0f, FColor::Red);
-    if (targetDirection != FVector::ZeroVector)
-    {
-        DrawDebugDirectionalArrow(GetWorld(), character->GetActorLocation(), character->GetActorLocation() + targetDirection * 100.0f, 1.0f, FColor::Blue, false, -1.0f, 0U, 6.0f);
-    }
-    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Yellow, FString::Printf(TEXT("[%s] Velocity: %f cm/s"), *character->GetName(), character->GetVelocity().Size()));
 }
 
 void ASDTAIController::Move(float deltaTime)
 {
-    splineDistance = FMath::Min(chassingSpline->GetSplineLength(), splineDistance + GetCharacter()->GetCharacterMovement()->MaxWalkSpeed * deltaTime);
-    auto splineLocation = chassingSpline->GetWorldLocationAtDistanceAlongSpline(splineDistance);
-    MoveToLocation(splineLocation, -1, true, false, false);
+    auto character = GetCharacter();
+    if (SplineDistance == -1.0f)
+    {
+        FVector forward = character->GetActorForwardVector();
+        if (ActiveDirectionTarget != FVector::ZeroVector)
+        {
+            if (FVector::Parallel(forward, ActiveDirectionTarget) && forward.Dot(ActiveDirectionTarget) > 0)
+            {
+                CalculateFarForwardTarget(ActiveDirectionTarget);
+                ActiveDirectionTarget = FVector::ZeroVector;
+            }
+            else
+            {
+                FVector rotationAxis = forward.Cross(ActiveDirectionTarget);
+                if (rotationAxis.IsNearlyZero())
+                {
+                    rotationAxis = character->GetActorUpVector();
+                }
+                else
+                {
+                    rotationAxis.Normalize();
+                }
+                DrawDebugDirectionalArrow(GetWorld(), character->GetActorLocation(), character->GetActorLocation() + rotationAxis * 100.0f, 3.0f, FColor::Red, false, -1.0f, 0U, 6.0f);
+                FVector nextDirection = forward.RotateAngleAxis(RotationAngleBySecond * deltaTime, rotationAxis);
+                CalculateFarForwardTarget(nextDirection);
+            }
+        }
+    }
+    else
+    {
+        auto splineLocation = SplineChassing->GetWorldLocationAtDistanceAlongSpline(SplineDistance);
+        SetTarget(splineLocation);
 
-    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Black, FString::Printf(TEXT("splineLocation: %s"), *splineLocation.ToString()));
-    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Black, FString::Printf(TEXT("splineDistance: %f"), splineDistance));
-    GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Black, FString::Printf(TEXT("splineLength: %f"), chassingSpline->GetSplineLength()));
-    DrawDebugPoint(GetWorld(), splineLocation, 10.0f, FColor::Blue);
+        //GEngine->AddOnScreenDebugMessage(6, 0.0f, FColor::Black, FString::Printf(TEXT("splineHeight: %f, character height: %f"), splineLocation.Z, GetCharacter()->GetActorLocation().Z));
+        //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Black, FString::Printf(TEXT("splineLocation: %s"), *splineLocation.ToString()));
+        //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Black, FString::Printf(TEXT("splineDistance: %f"), SplineDistance));
+        //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Black, FString::Printf(TEXT("splineLength: %f"), SplineChassing->GetSplineLength()));
+        DrawDebugPoint(GetWorld(), splineLocation, 10.0f, FColor::Magenta);
+    }
 }
 
 void ASDTAIController::SpeedControl(float deltaTime, float wallCollisionDistance)
