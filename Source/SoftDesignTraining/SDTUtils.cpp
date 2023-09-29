@@ -176,8 +176,18 @@ bool SDTUtils::DetectTargetsFromAgent(UWorld *world, FVector startPoint, FVector
     if (world->OverlapMultiByObjectType(overlapData, startPoint, FQuat::Identity, objectQueryParams, neighborsSphere))
     {
         overlapData = overlapData.FilterByPredicate([&](auto& overlap) -> auto {
-            return IsInVisionCone(startPoint, overlap.GetActor()->GetActorLocation(), viewDistanceDirection, halfAngle) &&
-              !BlockingRayAgent(world, startPoint, overlap.GetActor()->GetActorLocation());
+            return (
+                //If the collective is in the vision cone
+                (IsInVisionCone(startPoint, overlap.GetActor()->GetActorLocation(), viewDistanceDirection, halfAngle) &&
+                overlap.GetComponent()->GetCollisionObjectType() == COLLISION_COLLECTIBLE) ||
+                //If the player is in the sensory sphere
+                (IsInSensorySphere(startPoint, overlap.GetActor()->GetActorLocation(), viewDistanceDirection) &&
+                overlap.GetComponent()->GetCollisionObjectType() == COLLISION_PLAYER))
+
+                &&
+
+                !BlockingRayAgent(world, startPoint, overlap.GetActor()->GetActorLocation()
+              );
         });
         return overlapData.Num() > 0;
     }
@@ -229,6 +239,14 @@ bool SDTUtils::IsPlayerPoweredUp(UWorld *world)
         return false;
 
     return castedPlayerCharacter->IsPoweredUp();
+}
+
+bool SDTUtils::IsInSensorySphere(const FVector& start, const FVector& point, const FVector& viewDistanceDirection)
+{
+    FVector directionToPoint = point - start;
+    float distanceToPoint = directionToPoint.Size();
+    float distance = viewDistanceDirection.Size();
+    return distanceToPoint <= distance;
 }
 
 bool SDTUtils::IsInVisionCone(const FVector &start, const FVector &point, const FVector &viewDistanceDirection, float halfAngle)

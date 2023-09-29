@@ -82,6 +82,12 @@ public:
     /// \return True if the point is in the cone, false otherwise.
     static bool IsInVisionCone(const FVector &start, const FVector &point, const FVector &viewDistanceDirection, float halfAngle);
 
+    /// Determine if a point is inside a sensory sphere.
+    /// \param start The center of the sphere.
+    /// \param point The point to test.
+    /// \param viewDistanceDirection The radius of the sphere.
+    static bool IsInSensorySphere(const FVector& start, const FVector& point, const FVector& viewDistanceDirection);
+
     /// Calculate the angle between two vectors. The angle calculated is always positive.
     /// \param a The first vector where the angle start.
     /// \param b The second vector where the angle finishes.

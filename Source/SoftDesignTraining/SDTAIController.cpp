@@ -131,6 +131,8 @@ void ASDTAIController::Tick(float deltaTime)
 
         case ObjectiveType::FLEEING:
             ResetWallsDetection();
+            //SplineChassing->ClearSplinePoints(true);
+            //SplineDistance = -1.0f;
             break;
         }
 
@@ -206,16 +208,36 @@ void ASDTAIController::Tick(float deltaTime)
 
     case ObjectiveType::FLEEING:
         DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Fleeing", nullptr, FColor::Green, 0.0f, true);
-        DetectWalls(parallelWallDirection, wallCollisionDistance);
-        ActiveDirectionTarget = GetCharacter()->GetActorLocation() - target;
-        ActiveDirectionTarget.Normalize();
-        if (DetectWalls(parallelWallDirection, wallCollisionDistance))
+        //Si l'agent de detecte pas de mur
+        if (!DetectWalls(parallelWallDirection, wallCollisionDistance)){
+            auto directionToTarget = GetCharacter()->GetActorLocation() - target;
+            directionToTarget.Normalize();
+            if (!DetectWalls(parallelWallDirection, wallCollisionDistance, directionToTarget, ForwardWallRayCastDist)) {
+                ActiveDirectionTarget = GetCharacter()->GetActorLocation() - target;
+                ActiveDirectionTarget.Normalize();
+                GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.5f, FColor::Black, FString::Printf(TEXT("free to flee")));
+            }
+        }
+     
+        
+        if (parallelWallDirection!=FVector::ZeroVector)
         {
-            if (ActiveDirectionTarget.Dot(parallelWallDirection) < 0)
+            /*
+            auto directionToTarget = GetCharacter()->GetActorLocation() - target;
+            directionToTarget.Normalize();
+            if (directionToTarget.Dot(parallelWallDirection) < 0)
             {
                 ActiveDirectionTarget = -parallelWallDirection;
             }
+            if(directionToTarget.Dot(parallelWallDirection) >= 0)
+            {
+                ActiveDirectionTarget = parallelWallDirection;
+            }
+            */
+            ActiveDirectionTarget = parallelWallDirection;
         }
+
+        
         break;
 
     case ObjectiveType::WALKING:
@@ -227,7 +249,7 @@ void ASDTAIController::Tick(float deltaTime)
         }
         break;
     }
-
+   
 
     SpeedControl(deltaTime, wallCollisionDistance);
     Move(deltaTime);
@@ -237,7 +259,7 @@ void ASDTAIController::Tick(float deltaTime)
     DrawDebugPoint(GetWorld(), TargetMoveTo, 10.0f, FColor::Red);
     if (ActiveDirectionTarget != FVector::ZeroVector)
     {
-        DrawDebugDirectionalArrow(GetWorld(), character->GetActorLocation(), character->GetActorLocation() + ActiveDirectionTarget * 100.0f, 1.0f, FColor::Blue, false, -1.0f, 0U, 6.0f);
+        DrawDebugDirectionalArrow(GetWorld(), GetCharacter()->GetActorLocation(), GetCharacter()->GetActorLocation() + ActiveDirectionTarget * 100.0f, 10.0f, FColor::Magenta, false, -1.0f, 0U, 20.0f);
     }
     GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Yellow, FString::Printf(TEXT("[%s] Velocity: %f cm/s"), *character->GetName(), character->GetVelocity().Size()));
 }
@@ -257,8 +279,10 @@ bool ASDTAIController::DetectWalls(FVector &targetDirection, float &collisionDis
 
     if (isForwardHit)
     {
+        GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.5f, FColor::Blue, FString::Printf(TEXT("WALL")));
         FHitResult& forwardHit = hitData[0];
         collisionDistance = forwardHit.Distance;
+        GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.5f, FColor::Blue, FString::Printf(TEXT("Rotation: %i cm/s"), RotationDirection));
 
         // For the first impact normal encountered, take one decision on the rotation side and stick to it.
         // For each subsequent different impact normal encountered during the rotation, determine another target direction,
@@ -345,7 +369,28 @@ bool ASDTAIController::DetectWalls(FVector &targetDirection, float &collisionDis
 
     return false;
 }
+bool ASDTAIController::DetectWalls(FVector& targetDirection, float& collisionDistance, FVector hitDirection,float hitDist)
+{
+    auto world = GetWorld();
+    auto character = GetCharacter();
+    auto collisionShape = character->GetCapsuleComponent()->GetCollisionShape();
 
+    auto forwardVector = hitDirection;
+    auto loc = character->GetActorLocation();
+
+    TArray<FHitResult> hitData;
+    SDTUtils::SweepOverlapAgent(world, loc, loc +  hitDist* forwardVector, collisionShape, hitData);
+    DrawDebugLine(GetWorld(), loc, loc + hitDist * forwardVector, FColor::Yellow,false,-1.0f,0U,10.0);
+    bool isForwardHit = !hitData.IsEmpty();
+    if (isForwardHit) {
+        FHitResult& forwardHit = hitData[0];
+        // Calculate the cross product to get a horizontal vector on the plane of the wall pointing to the right.
+        auto upVector = character->GetActorUpVector();
+        targetDirection = forwardHit.ImpactNormal.Cross(upVector);
+        return true;
+    }
+    return false;
+}
 void ASDTAIController::ResetWallsDetection()
 {
     LastImpactNormal = FVector::ZeroVector;
@@ -451,7 +496,16 @@ void ASDTAIController::DetectObjective(ObjectiveType& objective, FVector& target
         {
             // Chase or flee from the player.
             objective = SDTUtils::IsPlayerPoweredUp(GetWorld()) ? ObjectiveType::FLEEING : ObjectiveType::CHASSING;
-            target = overlap->GetActor()->GetActorLocation();
+
+            //If chase we make sure that the agent can see the target
+            if (objective == ObjectiveType::CHASSING) {
+                if (SDTUtils::IsInVisionCone(location, overlap->GetActor()->GetActorLocation(), VisionDistance * GetCharacter()->GetActorForwardVector(), VisionAngle)) {
+                    target = overlap->GetActor()->GetActorLocation();
+                }
+            }
+            else {
+                target = overlap->GetActor()->GetActorLocation();
+            }
         }
         else
         {
@@ -479,4 +533,5 @@ void ASDTAIController::DetectObjective(ObjectiveType& objective, FVector& target
     }
 
     DrawDebugCone(GetWorld(), location, GetCharacter()->GetActorForwardVector(), VisionDistance, FMath::DegreesToRadians(VisionAngle), FMath::DegreesToRadians(VisionAngle), 24, FColor::Red);
+    DrawDebugSphere(GetWorld(), location, VisionDistance, 24, FColor::Green);
 }

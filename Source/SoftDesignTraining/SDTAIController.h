@@ -87,6 +87,7 @@ private:
     /// \param collisionDistance [out] The distance of the forward collision.
     /// \return True if a collision is detected, false otherwise.
     bool DetectWalls(FVector &targetDirection, float &collisionDistance);
+    bool DetectWalls(FVector& targetDirection, float& collisionDistance, FVector hitDirection, float hitDist);
     /// Reset the wall detection even if there was a collision detected.
     void ResetWallsDetection();
 
