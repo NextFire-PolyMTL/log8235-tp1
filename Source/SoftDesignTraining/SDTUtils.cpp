@@ -34,7 +34,7 @@ bool GetAvoidingLeftPoint(UWorld* world, const FHitResult& obstacle, FVector sta
         avoidingPoint = FVector(minX - capsuleRadius, minY - capsuleRadius, start.Z);
     }
 
-    return !world->OverlapBlockingTestByChannel(avoidingPoint, FQuat::Identity, ECollisionChannel::ECC_Pawn, actorCapsule->GetCollisionShape());
+    return !world->OverlapAnyTestByObjectType(avoidingPoint, FQuat::Identity, FCollisionObjectQueryParams(ECC_TO_BITFIELD(ECC_WorldStatic) | ECC_TO_BITFIELD(COLLISION_DEATH_OBJECT)), actorCapsule->GetCollisionShape());
 }
 
 bool GetAvoidingRightPoint(UWorld* world, const FHitResult& obstacle, FVector start, UCapsuleComponent* actorCapsule, FVector& avoidingPoint)
@@ -61,7 +61,7 @@ bool GetAvoidingRightPoint(UWorld* world, const FHitResult& obstacle, FVector st
     {
         avoidingPoint = FVector(minX - capsuleRadius, maxY + capsuleRadius, start.Z);
     }
-    return !world->OverlapBlockingTestByChannel(avoidingPoint, FQuat::Identity, ECollisionChannel::ECC_Pawn, actorCapsule->GetCollisionShape());
+    return !world->OverlapAnyTestByObjectType(avoidingPoint, FQuat::Identity, FCollisionObjectQueryParams(ECC_TO_BITFIELD(ECC_WorldStatic) | ECC_TO_BITFIELD(COLLISION_DEATH_OBJECT)), actorCapsule->GetCollisionShape());
 }
 
 
