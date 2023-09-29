@@ -497,15 +497,9 @@ void ASDTAIController::DetectObjective(ObjectiveType& objective, FVector& target
             // Chase or flee from the player.
             objective = SDTUtils::IsPlayerPoweredUp(GetWorld()) ? ObjectiveType::FLEEING : ObjectiveType::CHASSING;
 
-            //If chase we make sure that the agent can see the target
-            if (objective == ObjectiveType::CHASSING) {
-                if (SDTUtils::IsInVisionCone(location, overlap->GetActor()->GetActorLocation(), VisionDistance * GetCharacter()->GetActorForwardVector(), VisionAngle)) {
-                    target = overlap->GetActor()->GetActorLocation();
-                }
-            }
-            else {
-                target = overlap->GetActor()->GetActorLocation();
-            }
+            
+            target = overlap->GetActor()->GetActorLocation();
+            
         }
         else
         {
