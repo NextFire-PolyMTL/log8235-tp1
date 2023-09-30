@@ -121,6 +121,7 @@ void ASDTAIController::Tick(float deltaTime)
         case ObjectiveType::CHASSING:
             SplineChassing->ClearSplinePoints(true);
             SplineDistance = -1.0f;
+            ActiveDirectionTarget = GetCharacter()->GetActorForwardVector();
             break;
 
         case ObjectiveType::WALKING:
@@ -472,10 +473,8 @@ void ASDTAIController::SpeedControl(float deltaTime, float wallCollisionDistance
         accelerationToApply = Acceleration;
     }
 
-    // TODO: Is the minimum max speed (0.01f) is necessary?
-    // Always allow the character a really small max speed to allow it to turn around itself with the MoveTo calls.
-    // Restrict the max walk speed to never exceed configuration variable MaxSpeed.
-    character->GetCharacterMovement()->MaxWalkSpeed = FMath::Clamp(currentSpeed + accelerationToApply * deltaTime, 0.01f, MaxSpeed);
+    // Restrict the max walk speed to never exceed configuration variable MaxSpeed and to never go below 0.
+    character->GetCharacterMovement()->MaxWalkSpeed = FMath::Clamp(currentSpeed + accelerationToApply * deltaTime, 0.0f, MaxSpeed);
 }
 
 void ASDTAIController::DetectObjective(ObjectiveType &objective, FVector &target)
