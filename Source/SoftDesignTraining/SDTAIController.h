@@ -22,26 +22,33 @@ public:
 
     virtual void Tick(float deltaTime) override;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    /// Maximum speed of the agent
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
     float MaxSpeed = 400.0f;
 
+    /// Maximum acceleration of the agent
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
+    float Acceleration = 250.0f;
+
+    /// The maximum distance at which the agent can "see" other objects.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
     float VisionDistance = 800.0f;
 
+    /// The maximum angle (in degrees) at which the agent can "see" other objects.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0, ClampMax = 180.0))
     double VisionAngle = 60.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float Acceleration = 250.0f;
+    /// At which distance should the agent check for obstacles in front of it
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
+    float ForwardWallRayCastDist = 190.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float ForwardWallRayCastDist = 150.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    /// At which distance should the agent check for obstacles on its sides
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
     float SidesWallRayCastDist = 300.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    /// Maximum angle (in degrees) at which the agent can rotate per second
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
     float RotationAngleBySecond = 200;
-
 
 private:
     enum class ObjectiveType
@@ -108,7 +115,7 @@ private:
     FVector TargetMoveTo;
 
     /// The spline that the agent follows, depending of the value of SplineDistance.
-    USplineComponent* SplineChassing;
+    USplineComponent *SplineChassing;
     /// When different than -1, the agent is assumed to be on the spline and this value represents its progression on the spline.
     float SplineDistance = -1.0f;
 };

@@ -20,7 +20,7 @@ void ASoftDesignTrainingCharacter::BeginPlay()
     Super::BeginPlay();
 
     GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &ASoftDesignTrainingCharacter::OnBeginOverlap);
-    m_StartingPosition = GetActorLocation();
+    StartingPosition = GetActorLocation();
 }
 
 void ASoftDesignTrainingCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -32,18 +32,21 @@ void ASoftDesignTrainingCharacter::Tick(float deltaTime)
 {
     Super::Tick(deltaTime);
 
-    auto time = GetWorld()->GetTimeSeconds();
-    auto timeString = FString::Printf(TEXT("%.1fs"), time);
-    auto pickupString = FString::Printf(TEXT("%d pickups"), m_PickupCount);
-    auto deathString = FString::Printf(TEXT("%d deaths"), m_DeathCount);
+    if (ShowStats)
+    {
+        auto time = GetWorld()->GetTimeSeconds();
+        auto timeString = FString::Printf(TEXT("%.1fs"), time);
+        auto pickupString = FString::Printf(TEXT("%d pickups"), PickupCount);
+        auto deathString = FString::Printf(TEXT("%d deaths"), DeathCount);
 
-    GEngine->AddOnScreenDebugMessage((uint64)GetUniqueID(), INFINITY, FColor::White, FString::Printf(TEXT("[%s] %.1fs, %d pickups, %d deaths"), *GetName(), time, m_PickupCount, m_DeathCount));
+        GEngine->AddOnScreenDebugMessage((uint64)GetUniqueID(), INFINITY, FColor::White, FString::Printf(TEXT("[%s] %.1fs, %d pickups, %d deaths"), *GetName(), time, PickupCount, DeathCount));
 
-    auto world = GetWorld();
-    auto loc = GetActorLocation();
-    DrawDebugString(world, loc - FVector::UpVector * 100, timeString, nullptr, FColor::White, 0.0f, true);
-    DrawDebugString(world, loc - FVector::UpVector * 200, pickupString, nullptr, FColor::White, 0.0f, true);
-    DrawDebugString(world, loc - FVector::UpVector * 300, deathString, nullptr, FColor::White, 0.0f, true);
+        auto world = GetWorld();
+        auto loc = GetActorLocation();
+        DrawDebugString(world, loc - FVector::UpVector * 100, timeString, nullptr, FColor::White, 0.0f, true);
+        DrawDebugString(world, loc - FVector::UpVector * 200, pickupString, nullptr, FColor::White, 0.0f, true);
+        DrawDebugString(world, loc - FVector::UpVector * 300, deathString, nullptr, FColor::White, 0.0f, true);
+    }
 }
 
 void ASoftDesignTrainingCharacter::OnBeginOverlap(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComponent, int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult)
@@ -51,7 +54,7 @@ void ASoftDesignTrainingCharacter::OnBeginOverlap(UPrimitiveComponent *Overlappe
     if (OtherComponent->GetCollisionObjectType() == COLLISION_DEATH_OBJECT)
     {
         OnDeath();
-        SetActorLocation(m_StartingPosition);
+        SetActorLocation(StartingPosition);
     }
     else if (ASDTCollectible *collectibleActor = Cast<ASDTCollectible>(OtherActor))
     {
@@ -67,17 +70,17 @@ void ASoftDesignTrainingCharacter::OnBeginOverlap(UPrimitiveComponent *Overlappe
         if (mainCharacter->IsPoweredUp())
         {
             OnDeath();
-            SetActorLocation(m_StartingPosition);
+            SetActorLocation(StartingPosition);
         }
     }
 }
 
 void ASoftDesignTrainingCharacter::OnCollectPowerUp()
 {
-    m_PickupCount++;
+    PickupCount++;
 }
 
 void ASoftDesignTrainingCharacter::OnDeath()
 {
-    m_DeathCount++;
+    DeathCount++;
 }

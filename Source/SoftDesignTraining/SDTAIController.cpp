@@ -5,8 +5,7 @@
 #include "SDTUtils.h"
 #include "SDTCollectible.h"
 
-const float collisionDurationDebug = 5.0f;
-
+const auto collisionDurationDebug = 5.0f;
 
 FColor ColorIfHit(bool hit)
 {
@@ -93,7 +92,6 @@ void ASDTAIController::BeginPlay()
     CalculateFarForwardTarget();
 }
 
-
 void ASDTAIController::OnMoveCompleted(FAIRequestID requestID, EPathFollowingResult::Type result)
 {
     if (result != EPathFollowingResult::Aborted)
@@ -110,9 +108,9 @@ void ASDTAIController::OnMoveCompleted(FAIRequestID requestID, EPathFollowingRes
 void ASDTAIController::Tick(float deltaTime)
 {
     Super::Tick(deltaTime);
-    float wallCollisionDistance = -1.0f;
-    FVector target = FVector::ZeroVector;
-    FVector parallelWallDirection = FVector::ZeroVector;
+    auto wallCollisionDistance = -1.0f;
+    auto target = FVector::ZeroVector;
+    auto parallelWallDirection = FVector::ZeroVector;
     ObjectiveType objective;
 
     DetectObjective(objective, target);
@@ -138,7 +136,6 @@ void ASDTAIController::Tick(float deltaTime)
 
         CurrentObjective = objective;
     }
-
 
     switch (objective)
     {
@@ -186,7 +183,7 @@ void ASDTAIController::Tick(float deltaTime)
                     auto totalLength = SplineChassing->GetSplineLength();
                     for (auto length = 0; length <= totalLength; length = length + totalLength / 10)
                     {
-                       DrawDebugPoint(GetWorld(), SplineChassing->GetWorldLocationAtDistanceAlongSpline(length), 5.0f, FColor::Blue, false, 5.0f);
+                        DrawDebugPoint(GetWorld(), SplineChassing->GetWorldLocationAtDistanceAlongSpline(length), 5.0f, FColor::Blue, false, 5.0f);
                     }
                     SplineDistance = GetCharacter()->GetCapsuleComponent()->GetScaledCapsuleRadius();
                     UpdateTargetPositionOnSpline(deltaTime);
@@ -249,7 +246,7 @@ void ASDTAIController::Tick(float deltaTime)
         }
         break;
     }
-   
+
 
     SpeedControl(deltaTime, wallCollisionDistance);
     Move(deltaTime);
@@ -275,12 +272,12 @@ bool ASDTAIController::DetectWalls(FVector &targetDirection, float &collisionDis
 
     TArray<FHitResult> hitData;
     SDTUtils::SweepOverlapAgent(world, loc, loc + ForwardWallRayCastDist * forwardVector, collisionShape, hitData);
-    bool isForwardHit = !hitData.IsEmpty();
+    auto isForwardHit = !hitData.IsEmpty();
 
     if (isForwardHit)
     {
         GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.5f, FColor::Blue, FString::Printf(TEXT("WALL")));
-        FHitResult& forwardHit = hitData[0];
+        auto& forwardHit = hitData[0];
         collisionDistance = forwardHit.Distance;
         GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.5f, FColor::Blue, FString::Printf(TEXT("Rotation: %i cm/s"), RotationDirection));
 
@@ -289,7 +286,7 @@ bool ASDTAIController::DetectWalls(FVector &targetDirection, float &collisionDis
         // but stick to the same rotation side to avoid to stay stuck in a corner.
         if (!LastImpactNormal.Equals(forwardHit.ImpactNormal))
         {
-            //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 1.0f, FColor::Blue, FString::Printf(TEXT("LastNormal: %s, NewNormal: %s, Angle is: %f"), *lastImpactNormal.ToString(), *forwardHit.ImpactNormal.ToString(), SDTUtils::CosineVectors(lastImpactNormal, forwardHit.ImpactNormal)));
+            // GEngine->AddOnScreenDebugMessage(INDEX_NONE, 1.0f, FColor::Blue, FString::Printf(TEXT("LastNormal: %s, NewNormal: %s, Angle is: %f"), *lastImpactNormal.ToString(), *forwardHit.ImpactNormal.ToString(), SDTUtils::CosineVectors(lastImpactNormal, forwardHit.ImpactNormal)));
             bool isNewWallDetection = LastImpactNormal == FVector::ZeroVector;
             LastImpactNormal = forwardHit.ImpactNormal;
 
@@ -306,7 +303,7 @@ bool ASDTAIController::DetectWalls(FVector &targetDirection, float &collisionDis
             {
                 // Calculate which direction (left or right) we want to go.
                 // Add 1 cm to the capsule radius to do not be too close of the wall when doing the parallel SweepCast.
-                FVector impactPointWithCapsule = forwardHit.ImpactPoint + forwardHit.ImpactNormal * (collisionShape.GetCapsuleRadius() + 1.0f);
+                auto impactPointWithCapsule = forwardHit.ImpactPoint + forwardHit.ImpactNormal * (collisionShape.GetCapsuleRadius() + 1.0f);
 
                 // Use the horizontal vector parallel to the wall to detect another wall at the left or the right of the character.
                 // It works here because the floor is flat. On an inclined floor, the sweep will hit the floor.
@@ -347,7 +344,6 @@ bool ASDTAIController::DetectWalls(FVector &targetDirection, float &collisionDis
                 }
                 targetDirection = RotationDirection * parallelHitDirection;
 
-
                 DrawDebugLine(world, impactPointWithCapsule, impactPointWithCapsule + forwardVector * ForwardWallRayCastDist, ColorIfHit(isForwardHit), false, collisionDurationDebug, 0, ThicknessIfHit(isForwardHit));
                 DrawDebugLine(world, impactPointWithCapsule, impactPointWithCapsule + parallelHitDirection * SidesWallRayCastDist, ColorIfHit(isParallelHitSide1), false, collisionDurationDebug, 0, ThicknessIfHit(isParallelHitSide1));
                 DrawDebugLine(world, impactPointWithCapsule, impactPointWithCapsule - parallelHitDirection * SidesWallRayCastDist, ColorIfHit(isParallelHitSide2), false, collisionDurationDebug, 0, ThicknessIfHit(isParallelHitSide2));
@@ -355,7 +351,7 @@ bool ASDTAIController::DetectWalls(FVector &targetDirection, float &collisionDis
                 DrawDebugDirectionalArrow(world, forwardHit.ImpactPoint, (forwardHit.ImpactPoint + upVector * 100.0), 5.0f, FColor::Blue, false, collisionDurationDebug, 0, 2.0f);
                 DrawDebugDirectionalArrow(world, forwardHit.ImpactPoint, (forwardHit.ImpactPoint + parallelHitDirection * 100.0), 5.0f, FColor::Magenta, false, collisionDurationDebug, 0, 2.0f);
                 DrawDebugDirectionalArrow(world, forwardHit.ImpactPoint - forwardVector * 100.0, forwardHit.ImpactPoint, 5.0f, FColor::Magenta, false, collisionDurationDebug, 0, 2.0f);
-                UPrimitiveComponent* hitComponent = forwardHit.GetComponent();
+                auto hitComponent = forwardHit.GetComponent();
                 DrawDebugBox(world, hitComponent->Bounds.Origin, hitComponent->Bounds.BoxExtent, FColor::Green, false, collisionDurationDebug);
             }
         }
@@ -412,7 +408,7 @@ void ASDTAIController::Move(float deltaTime)
     auto character = GetCharacter();
     if (SplineDistance == -1.0f)
     {
-        FVector forward = character->GetActorForwardVector();
+        auto forward = character->GetActorForwardVector();
         if (ActiveDirectionTarget != FVector::ZeroVector)
         {
             if (FVector::Parallel(forward, ActiveDirectionTarget) && forward.Dot(ActiveDirectionTarget) > 0)
@@ -422,7 +418,7 @@ void ASDTAIController::Move(float deltaTime)
             }
             else
             {
-                FVector rotationAxis = forward.Cross(ActiveDirectionTarget);
+                auto rotationAxis = forward.Cross(ActiveDirectionTarget);
                 if (rotationAxis.IsNearlyZero())
                 {
                     rotationAxis = character->GetActorUpVector();
@@ -432,7 +428,7 @@ void ASDTAIController::Move(float deltaTime)
                     rotationAxis.Normalize();
                 }
                 DrawDebugDirectionalArrow(GetWorld(), character->GetActorLocation(), character->GetActorLocation() + rotationAxis * 100.0f, 3.0f, FColor::Red, false, -1.0f, 0U, 6.0f);
-                FVector nextDirection = forward.RotateAngleAxis(RotationAngleBySecond * deltaTime, rotationAxis);
+                auto nextDirection = forward.RotateAngleAxis(RotationAngleBySecond * deltaTime, rotationAxis);
                 CalculateFarForwardTarget(nextDirection);
             }
         }
@@ -442,10 +438,10 @@ void ASDTAIController::Move(float deltaTime)
         auto splineLocation = SplineChassing->GetWorldLocationAtDistanceAlongSpline(SplineDistance);
         SetTarget(splineLocation);
 
-        //GEngine->AddOnScreenDebugMessage(6, 0.0f, FColor::Black, FString::Printf(TEXT("splineHeight: %f, character height: %f"), splineLocation.Z, GetCharacter()->GetActorLocation().Z));
-        //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Black, FString::Printf(TEXT("splineLocation: %s"), *splineLocation.ToString()));
-        //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Black, FString::Printf(TEXT("splineDistance: %f"), SplineDistance));
-        //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Black, FString::Printf(TEXT("splineLength: %f"), SplineChassing->GetSplineLength()));
+        // GEngine->AddOnScreenDebugMessage(6, 0.0f, FColor::Black, FString::Printf(TEXT("splineHeight: %f, character height: %f"), splineLocation.Z, GetCharacter()->GetActorLocation().Z));
+        // GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Black, FString::Printf(TEXT("splineLocation: %s"), *splineLocation.ToString()));
+        // GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Black, FString::Printf(TEXT("splineDistance: %f"), SplineDistance));
+        // GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Black, FString::Printf(TEXT("splineLength: %f"), SplineChassing->GetSplineLength()));
         DrawDebugPoint(GetWorld(), splineLocation, 10.0f, FColor::Magenta);
     }
 }
@@ -460,7 +456,7 @@ void ASDTAIController::SpeedControl(float deltaTime, float wallCollisionDistance
     {
         if (wallCollisionDistance <= 100.0f)
         {
-            accelerationToApply = - 2 * Acceleration;
+            accelerationToApply = -2 * Acceleration;
         }
         else if (currentSpeed > 200)
         {
@@ -482,16 +478,14 @@ void ASDTAIController::SpeedControl(float deltaTime, float wallCollisionDistance
     character->GetCharacterMovement()->MaxWalkSpeed = FMath::Clamp(currentSpeed + accelerationToApply * deltaTime, 0.01f, MaxSpeed);
 }
 
-
-void ASDTAIController::DetectObjective(ObjectiveType& objective, FVector& target)
+void ASDTAIController::DetectObjective(ObjectiveType &objective, FVector &target)
 {
-    FVector location = GetCharacter()->GetActorLocation();
+    auto location = GetCharacter()->GetActorLocation();
     TArray<FOverlapResult> overlapData;
     if (SDTUtils::DetectTargetsFromAgent(GetWorld(), location, VisionDistance * GetCharacter()->GetActorForwardVector(), VisionAngle, overlapData))
     {
-        auto overlap = overlapData.FindByPredicate([](auto overlap) -> auto {
-            return overlap.GetComponent()->GetCollisionObjectType() == COLLISION_PLAYER;
-        });
+        auto overlap = overlapData.FindByPredicate([](auto overlap) -> auto
+                                                   { return overlap.GetComponent()->GetCollisionObjectType() == COLLISION_PLAYER; });
         if (overlap != nullptr)
         {
             // Chase or flee from the player.
@@ -508,8 +502,9 @@ void ASDTAIController::DetectObjective(ObjectiveType& objective, FVector& target
             auto smallestDistance = INFINITY;
             for (int i = 0; i < overlapData.Num(); ++i)
             {
-                ASDTCollectible *collectible = dynamic_cast<ASDTCollectible*>(overlapData[i].GetActor());
-                if (collectible != nullptr && !collectible->IsOnCooldown()) {
+                auto collectible = dynamic_cast<ASDTCollectible *>(overlapData[i].GetActor());
+                if (collectible != nullptr && !collectible->IsOnCooldown())
+                {
                     auto distance = (overlapData[i].GetActor()->GetActorLocation() - location).Size();
                     if (distance < smallestDistance)
                     {
