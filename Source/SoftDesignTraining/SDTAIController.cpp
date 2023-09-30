@@ -207,32 +207,24 @@ void ASDTAIController::Tick(float deltaTime)
     case ObjectiveType::FLEEING:
         DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Fleeing", nullptr, FColor::Green, 0.0f, true);
         //Si l'agent ne detecte pas de mur
-        if (!AvoidWalls(parallelWallDirection, wallCollisionDistance)){
+        if (!AvoidWalls(parallelWallDirection, wallCollisionDistance,target)){
             auto directionToTarget = GetCharacter()->GetActorLocation() - target;
             directionToTarget.Normalize();
             //Si la direction prise par l'agent pour fuir ne lui fait pas prendre un mur
             TArray<FHitResult> hitData;
-            if (!DetectWalls(hitData,directionToTarget, ForwardWallRayCastDist)) {
+            if (!DetectWalls(hitData, directionToTarget, ForwardWallRayCastDist)) {
                 ActiveDirectionTarget = GetCharacter()->GetActorLocation() - target;
                 ActiveDirectionTarget.Normalize();
+            }
+            else if (ActiveDirectionTarget.Dot(directionToTarget) < 0) {
+                ActiveDirectionTarget = -ActiveDirectionTarget;
             }
         }
      
         //Si l'agent detecte un mur, on suit la direction parallèle au mur dans le sens où le joueur se dirige
         if (parallelWallDirection!=FVector::ZeroVector)
         {
-            
-            auto directionToTarget = GetCharacter()->GetActorLocation() - target;
-            directionToTarget.Normalize();
-            if (directionToTarget.Dot(parallelWallDirection) < 0)
-            {
-                ActiveDirectionTarget = -parallelWallDirection;
-            }
-            if(directionToTarget.Dot(parallelWallDirection) >= 0)
-            {
-                ActiveDirectionTarget = parallelWallDirection;
-            }
-            
+            ActiveDirectionTarget = parallelWallDirection;
         }
 
         
@@ -262,10 +254,27 @@ void ASDTAIController::Tick(float deltaTime)
     //GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Yellow, FString::Printf(TEXT("[%s] Velocity: %f cm/s"), *character->GetName(), character->GetVelocity().Size()));
 }
 
-bool ASDTAIController::AvoidWalls(FVector &targetDirection, float &collisionDistance)
+bool ASDTAIController::DetectWalls(TArray<FHitResult> &hitData, FVector hitDirection,float hitDist)
 {
     auto world = GetWorld();
     auto character = GetCharacter();
+    auto collisionShape = character->GetCapsuleComponent()->GetCollisionShape();
+
+    auto forwardVector = hitDirection;
+    auto loc = character->GetActorLocation();
+
+    SDTUtils::SweepOverlapAgent(world, loc, loc +  hitDist* forwardVector, collisionShape, hitData);
+    bool isForwardHit = !hitData.IsEmpty();
+    if (isForwardHit) {;
+        return true;
+    }
+    return false;
+}
+bool ASDTAIController::AvoidWalls(FVector& targetDirection, float& collisionDistance, FVector playerPos)
+{
+    auto world = GetWorld();
+    auto character = GetCharacter();
+    auto loc = character->GetActorLocation();
     auto collisionShape = character->GetCapsuleComponent()->GetCollisionShape();
 
     auto forwardVector = character->GetActorForwardVector();
@@ -275,7 +284,7 @@ bool ASDTAIController::AvoidWalls(FVector &targetDirection, float &collisionDist
 
     if (isForwardHit)
     {
-        
+
         auto& forwardHit = hitData[0];
         collisionDistance = forwardHit.Distance;
 
@@ -338,6 +347,11 @@ bool ASDTAIController::AvoidWalls(FVector &targetDirection, float &collisionDist
                 else
                 {
                     RotationDirection = FMath::Sign(productForwardAndNormal);
+                    FVector directionToplayer = loc - playerPos;
+                    bool facePlayer = forwardVector.Dot(directionToplayer)<=0;
+                    if (playerPos != FVector::ZeroVector && facePlayer) {
+                        RotationDirection = -RotationDirection;
+                    }
                 }
                 targetDirection = RotationDirection * parallelHitDirection;
 
@@ -362,23 +376,6 @@ bool ASDTAIController::AvoidWalls(FVector &targetDirection, float &collisionDist
 
     return false;
 }
-bool ASDTAIController::DetectWalls(TArray<FHitResult> &hitData, FVector hitDirection,float hitDist)
-{
-    auto world = GetWorld();
-    auto character = GetCharacter();
-    auto collisionShape = character->GetCapsuleComponent()->GetCollisionShape();
-
-    auto forwardVector = hitDirection;
-    auto loc = character->GetActorLocation();
-
-    SDTUtils::SweepOverlapAgent(world, loc, loc +  hitDist* forwardVector, collisionShape, hitData);
-    bool isForwardHit = !hitData.IsEmpty();
-    if (isForwardHit) {;
-        return true;
-    }
-    return false;
-}
-
 void ASDTAIController::ResetWallsDetection()
 {
     LastImpactNormal = FVector::ZeroVector;

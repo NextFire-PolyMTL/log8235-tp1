@@ -93,7 +93,8 @@ private:
     /// \param targetDirection [out] On the first collision detection, a direction parallel to the wall, either left or right depending of the other obstacles around.
     /// \param collisionDistance [out] The distance of the forward collision.
     /// \return True if a collision is detected, false otherwise.
-    bool AvoidWalls(FVector &targetDirection, float &collisionDistance);
+    //bool AvoidWalls(FVector &targetDirection, float &collisionDistance);
+    bool AvoidWalls(FVector& targetDirection, float& collisionDistance, FVector playerPos=FVector::ZeroVector);
     bool DetectWalls(TArray<FHitResult>& hitData, FVector hitDirection, float hitDist);
     /// Reset the wall detection even if there was a collision detected.
     void ResetWallsDetection();
