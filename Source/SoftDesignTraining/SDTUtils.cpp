@@ -11,7 +11,7 @@
 
 bool GetAvoidingLeftPoint(UWorld *world, const FHitResult &obstacle, FVector start, UCapsuleComponent *actorCapsule, FVector &avoidingPoint)
 {
-    auto capsuleRadius = actorCapsule->GetScaledCapsuleRadius() + 1;
+    auto capsuleRadius = actorCapsule->GetScaledCapsuleRadius() + 10;
     auto box = obstacle.GetActor()->GetComponentsBoundingBox();
     auto minX = box.Min.X;
     auto maxX = box.Max.X;
@@ -39,7 +39,7 @@ bool GetAvoidingLeftPoint(UWorld *world, const FHitResult &obstacle, FVector sta
 
 bool GetAvoidingRightPoint(UWorld *world, const FHitResult &obstacle, FVector start, UCapsuleComponent *actorCapsule, FVector &avoidingPoint)
 {
-    auto capsuleRadius = actorCapsule->GetScaledCapsuleRadius() + 1;
+    auto capsuleRadius = actorCapsule->GetScaledCapsuleRadius() + 10;
     auto box = obstacle.GetActor()->GetComponentsBoundingBox();
     auto minX = box.Min.X;
     auto maxX = box.Max.X;
