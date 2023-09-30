@@ -253,7 +253,7 @@ bool ASDTAIController::DetectWalls(FVector &targetDirection, float &collisionDis
 
     if (isForwardHit)
     {
-        auto forwardHit = hitData[0];
+        auto& forwardHit = hitData[0];
         collisionDistance = forwardHit.Distance;
 
         // For the first impact normal encountered, take one decision on the rotation side and stick to it.
