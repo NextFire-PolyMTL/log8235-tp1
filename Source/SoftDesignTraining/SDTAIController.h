@@ -40,7 +40,7 @@ public:
 
     /// At which distance should the agent check for obstacles in front of it
     UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
-    float ForwardWallRayCastDist = 190.0f;
+    float ForwardWallRayCastDist = 200.0f;
 
     /// At which distance should the agent check for obstacles on its sides
     UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
@@ -58,6 +58,14 @@ private:
         WALKING
     };
 
+    enum class RotationSide
+    {
+        COUNTER_CLOCKWISE = -1,
+        CLOCKWISE = 1
+    };
+
+    int IntRotationDirection() const;
+
     /// Starts to move directly to the target, but adjust the target point to be at least at some distance of the actor.
     /// \param target The world position where the actor will move forward.
     /// \param minimumDistance The minimum distance from the actor at which the point to move to is set.
@@ -69,6 +77,10 @@ private:
     /// Starts to move in the direction at which the character is looking at until a wall is detected or until the maximum distance is reached.
     void CalculateFarForwardTarget();
 
+    void AssignTargetDirection(FVector direction);
+    void AssignTargetPoint(FVector target, RotationSide rotationDirection);
+    void AssignTargetPoint(FVector target);
+
     /// Update the next position to go on the spline. There must be a valid spline for that.
     /// \param deltaTime Determine the amount of displacement on the spline.
     void UpdateTargetPositionOnSpline(float deltaTime);
@@ -76,11 +88,11 @@ private:
     /// Adjust the maximum speed of the agent depending of the distance of the collision in front of the agent.
     /// \param deltaTime Used to determine the amount of speed to add or remove.
     /// \param wallCollisionDistance The distance of the next collision towards the actor.
-    void SpeedControl(float deltaTime, float wallCollisionDistance);
+    void SpeedControl(float deltaTime, bool hasForwardHit, FHitResult& forwardHit);
 
     /// Determine the next position to go to using either the active spline or the ActiveDirectionTarget.
     /// \param deltaTime Used to determine the amount of rotation to do.
-    void Move(float deltaTime);
+    void Move(float deltaTime, bool hasForwardHit, FHitResult &forwardHit);
 
     /// Look around the agent to find its goal. If the player is visible, the method gives the player position.
     /// If there is one or multiple visible collectibles, the method gives the closest collectible position.
@@ -93,7 +105,7 @@ private:
     /// \param targetDirection [out] On the first collision detection, a direction parallel to the wall, either left or right depending of the other obstacles around.
     /// \param collisionDistance [out] The distance of the forward collision.
     /// \return True if a collision is detected, false otherwise.
-    bool AvoidWalls(FVector &targetDirection, float &collisionDistance);
+    bool AvoidWalls(FVector &targetDirection, FHitResult &forwardHit);
     bool DetectWalls(TArray<FHitResult>& hitData, FVector hitDirection, float hitDist);
     /// Reset the wall detection even if there was a collision detected.
     void ResetWallsDetection();
@@ -102,7 +114,7 @@ private:
     FVector LastImpactNormal = FVector::ZeroVector;
 
     /// When the first wall is detected, indicates the rotation direction axis.
-    int RotationDirection = 1;
+    RotationSide RotationDirection = RotationSide::CLOCKWISE;
 
     /// The actual objective. When changing the objective, some variables need to be reset.
     ObjectiveType CurrentObjective = ObjectiveType::WALKING;
