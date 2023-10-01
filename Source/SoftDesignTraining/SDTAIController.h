@@ -24,11 +24,11 @@ public:
 
     /// Maximum speed of the agent
     UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
-    float MaxSpeed = 400.0f;
+    float MaxSpeed = 600.0f;
 
     /// Maximum acceleration of the agent
     UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
-    float Acceleration = 250.0f;
+    float Acceleration = 300.0f;
 
     /// The maximum distance at which the agent can "see" other objects.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
@@ -48,7 +48,7 @@ public:
 
     /// Maximum angle (in degrees) at which the agent can rotate per second
     UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
-    float RotationAngleBySecond = 200;
+    float RotationAngleBySecond = 450;
 
 private:
     enum class ObjectiveType
@@ -105,7 +105,7 @@ private:
     /// \param targetDirection [out] On the first collision detection, a direction parallel to the wall, either left or right depending of the other obstacles around.
     /// \param collisionDistance [out] The distance of the forward collision.
     /// \return True if a collision is detected, false otherwise.
-    bool AvoidWalls(FVector &targetDirection, FHitResult &forwardHit);
+    bool AvoidWalls(FVector &targetDirection, FHitResult &forwardHit,FVector playerPos);
     bool DetectWalls(TArray<FHitResult>& hitData, FVector hitDirection, float hitDist);
     /// Reset the wall detection even if there was a collision detected.
     void ResetWallsDetection();

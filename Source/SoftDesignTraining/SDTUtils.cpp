@@ -184,8 +184,7 @@ bool SDTUtils::DetectTargetsFromAgent(UWorld *world, FVector startPoint, FVector
 
                 &&
 
-                !BlockingRayAgent(world, startPoint, overlap.GetActor()->GetActorLocation()
-              );
+                !BlockingRayAgent(world, startPoint, overlap.GetActor()->GetActorLocation());
         });
         return overlapData.Num() > 0;
     }
