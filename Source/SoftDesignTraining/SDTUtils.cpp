@@ -11,12 +11,14 @@
 
 bool GetAvoidingLeftPoint(UWorld *world, const FHitResult &obstacle, FVector start, UCapsuleComponent *actorCapsule, FVector &avoidingPoint)
 {
+    // Shift just a little bit the point outside of the corner, otherwise the agent tends to stay stuck in the corner sometimes.
     auto capsuleRadius = actorCapsule->GetScaledCapsuleRadius() + 10;
     auto box = obstacle.GetActor()->GetComponentsBoundingBox();
     auto minX = box.Min.X;
     auto maxX = box.Max.X;
     auto minY = box.Min.Y;
     auto maxY = box.Max.Y;
+    // Separate the space around the box in 4 regions. Each of the region can reach one corner at its left.
     if (start.X <= maxX && start.Y < minY)
     {
         avoidingPoint = FVector(maxX + capsuleRadius, minY - capsuleRadius, start.Z);
@@ -39,12 +41,14 @@ bool GetAvoidingLeftPoint(UWorld *world, const FHitResult &obstacle, FVector sta
 
 bool GetAvoidingRightPoint(UWorld *world, const FHitResult &obstacle, FVector start, UCapsuleComponent *actorCapsule, FVector &avoidingPoint)
 {
+    // Shift just a little bit the point outside of the corner, otherwise the agent tends to stay stuck in the corner sometimes.
     auto capsuleRadius = actorCapsule->GetScaledCapsuleRadius() + 10;
     auto box = obstacle.GetActor()->GetComponentsBoundingBox();
     auto minX = box.Min.X;
     auto maxX = box.Max.X;
     auto minY = box.Min.Y;
     auto maxY = box.Max.Y;
+    // Separate the space around the box in 4 regions. Each of the region can reach one corner at its right.
     if (start.X >= minX && start.Y < minY)
     {
         avoidingPoint = FVector(minX - capsuleRadius, minY - capsuleRadius, start.Z);
@@ -61,6 +65,7 @@ bool GetAvoidingRightPoint(UWorld *world, const FHitResult &obstacle, FVector st
     {
         avoidingPoint = FVector(minX - capsuleRadius, maxY + capsuleRadius, start.Z);
     }
+
     return !world->OverlapAnyTestByObjectType(avoidingPoint, FQuat::Identity, FCollisionObjectQueryParams(ECC_TO_BITFIELD(ECC_WorldStatic) | ECC_TO_BITFIELD(COLLISION_DEATH_OBJECT)), actorCapsule->GetCollisionShape());
 }
 
@@ -74,34 +79,30 @@ bool FindPathToLocationLeft(UWorld *world, FVector start, FVector target, FVecto
     }
     depthRecursion += 1;
 
+    // Find if there is an obstacle between start and target.
     TArray<FHitResult> obstacles;
-    auto hit = SDTUtils::SweepOverlapAgent(world, start, target, actorCapsule->GetCollisionShape(), obstacles);
-    if (hit)
+    if (!SDTUtils::SweepOverlapAgent(world, start, target, actorCapsule->GetCollisionShape(), obstacles))
     {
-        FVector avoidingPoint;
-        if (GetAvoidingLeftPoint(world, obstacles[0], start, actorCapsule, avoidingPoint))
-        {
-            points.Add(avoidingPoint);
-            if (FindPathToLocationLeft(world, avoidingPoint, target, up, actorCapsule, points, distance))
-            {
-                distance += (avoidingPoint - start).Size();
-                return true;
-            }
-            else
-            {
-                points.Pop();
-            }
-        }
-        return false;
-    }
-    else
-    {
+        // There is no obstacle, we found a path.
         points.Add(target);
+        distance += (target - start).Size();
         return true;
     }
+
+    // Try to find a point on the corner of the obstacle that does not overlap another object.
+    FVector avoidingPoint;
+    if (!GetAvoidingLeftPoint(world, obstacles[0], start, actorCapsule, avoidingPoint))
+    {
+        return false;
+    }
+
+    // Add that point and do the same logic again from that avoiding point.
+    points.Add(avoidingPoint);
+    distance += (avoidingPoint - start).Size();
+    return FindPathToLocationLeft(world, avoidingPoint, target, up, actorCapsule, points, distance);
 }
 
-bool FindPathToLocationRight(UWorld *world, FVector start, FVector target, FVector up, UCapsuleComponent *actorCapsule, TArray<FVector> &points, float &distance)
+bool FindPathToLocationRight(UWorld* world, FVector start, FVector target, FVector up, UCapsuleComponent* actorCapsule, TArray<FVector>& points, float& distance)
 {
     if (depthRecursion > 4)
     {
@@ -109,31 +110,28 @@ bool FindPathToLocationRight(UWorld *world, FVector start, FVector target, FVect
     }
     depthRecursion += 1;
 
+    // Find if there is an obstacle between start and target.
     TArray<FHitResult> obstacles;
-    auto hit = SDTUtils::SweepOverlapAgent(world, start, target, actorCapsule->GetCollisionShape(), obstacles);
-    if (hit)
+    if (!SDTUtils::SweepOverlapAgent(world, start, target, actorCapsule->GetCollisionShape(), obstacles))
     {
-        FVector avoidingPoint;
-        if (GetAvoidingRightPoint(world, obstacles[0], start, actorCapsule, avoidingPoint))
-        {
-            points.Add(avoidingPoint);
-            if (FindPathToLocationRight(world, avoidingPoint, target, up, actorCapsule, points, distance))
-            {
-                distance += (avoidingPoint - start).Size();
-                return true;
-            }
-            else
-            {
-                points.Pop();
-            }
-        }
+        // There is no obstacle, we found a path.
+        points.Add(target);
+        distance += (target - start).Size();
+        return true;
+
+    }
+
+    // Try to find a point on the corner of the obstacle that does not overlap another object.
+    FVector avoidingPoint;
+    if (!GetAvoidingRightPoint(world, obstacles[0], start, actorCapsule, avoidingPoint))
+    {
         return false;
     }
-    else
-    {
-        points.Add(target);
-        return true;
-    }
+
+    // Add that point and do the same logic again from that avoiding point.
+    points.Add(avoidingPoint);
+    distance += (target - start).Size();
+    return FindPathToLocationRight(world, avoidingPoint, target, up, actorCapsule, points, distance);
 }
 
 bool SDTUtils::BlockingRayAgent(UWorld *world, FVector startPoint, FVector targetPoint)
