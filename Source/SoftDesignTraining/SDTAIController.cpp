@@ -118,9 +118,6 @@ void ASDTAIController::BeginPlay()
     SplineChassing->SetDrawDebug(true);
     SplineChassing->SetAbsolute(true, true, true);
 
-    auto character = GetCharacter();
-    auto moveComp = character->GetCharacterMovement();
-    moveComp->MaxWalkSpeed = MaxSpeed;
     CalculateFarForwardTarget();
 }
 
@@ -265,7 +262,7 @@ void ASDTAIController::Tick(float deltaTime)
         if (parallelWallDirection != FVector::ZeroVector)
         {
             
-            //Si l'agent detecte un mur, on suit la direction parallèle au mur dans le sens où le joueur se dirige
+            //Si l'agent detecte un mur, on suit la direction parallï¿½le au mur dans le sens oï¿½ le joueur se dirige
             hasForwardHit = true;
             auto directionToTarget = GetCharacter()->GetActorLocation() - target;
             directionToTarget.Normalize();
