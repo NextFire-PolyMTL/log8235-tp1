@@ -238,11 +238,11 @@ bool SDTUtils::IsPlayerPoweredUp(UWorld *world)
     return castedPlayerCharacter->IsPoweredUp();
 }
 
-bool SDTUtils::IsInSensorySphere(const FVector& start, const FVector& point, const FVector& viewDistanceDirection)
+bool SDTUtils::IsInSensorySphere(const FVector &start, const FVector &point, const FVector &viewDistanceDirection)
 {
-    FVector directionToPoint = point - start;
-    float distanceToPoint = directionToPoint.Size();
-    float distance = viewDistanceDirection.Size();
+    auto directionToPoint = point - start;
+    auto distanceToPoint = directionToPoint.Size();
+    auto distance = viewDistanceDirection.Size();
     return distanceToPoint <= distance;
 }
 
