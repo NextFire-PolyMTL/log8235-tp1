@@ -77,10 +77,6 @@ private:
     /// Starts to move in the direction at which the character is looking at until a wall is detected or until the maximum distance is reached.
     void CalculateFarForwardTarget();
 
-    void AssignTargetDirection(FVector direction);
-    void AssignTargetPoint(FVector target, RotationSide rotationDirection);
-    void AssignTargetPoint(FVector target);
-
     /// Update the next position to go on the spline. There must be a valid spline for that.
     /// \param deltaTime Determine the amount of displacement on the spline.
     void UpdateTargetPositionOnSpline(float deltaTime);
