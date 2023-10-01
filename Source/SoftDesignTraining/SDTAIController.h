@@ -28,7 +28,7 @@ public:
 
     /// Maximum acceleration of the agent
     UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
-    float Acceleration = 300.0f;
+    float Acceleration = 350.0f;
 
     /// The maximum distance at which the agent can "see" other objects.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
@@ -48,7 +48,7 @@ public:
 
     /// Maximum angle (in degrees) at which the agent can rotate per second
     UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
-    float RotationAngleBySecond = 450;
+    float RotationAngleBySecond = 400;
 
 private:
     /// Define the objectives the agent can have.
