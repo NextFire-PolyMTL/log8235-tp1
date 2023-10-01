@@ -51,6 +51,7 @@ public:
     float RotationAngleBySecond = 450;
 
 private:
+    /// Define the objectives the agent can have.
     enum class ObjectiveType
     {
         CHASSING,
@@ -58,12 +59,14 @@ private:
         WALKING
     };
 
+    /// Define an explicit clockwise and counter clockwise rotation. That helps to force a valid rotation value inside a variable of this enum type.
     enum class RotationSide
     {
         COUNTER_CLOCKWISE = -1,
         CLOCKWISE = 1
     };
 
+    /// The current rotation side chosen by the wall detection as an integer value.
     int IntRotationDirection() const;
 
     /// Starts to move directly to the target, but adjust the target point to be at least at some distance of the actor.
@@ -83,12 +86,15 @@ private:
 
     /// Adjust the maximum speed of the agent depending of the distance of the collision in front of the agent.
     /// \param deltaTime Used to determine the amount of speed to add or remove.
-    /// \param wallCollisionDistance The distance of the next collision towards the actor.
-    void SpeedControl(float deltaTime, bool hasForwardHit, FHitResult& forwardHit);
+    /// \param hasForwardHit True if there is a potential collision in front of the agent.
+    /// \param forwardHit If hasForwardHit is true, it is the hit information of the potential collision.
+    void SpeedControl(float deltaTime, bool hasForwardHit, const FHitResult &forwardHit);
 
     /// Determine the next position to go to using either the active spline or the ActiveDirectionTarget.
     /// \param deltaTime Used to determine the amount of rotation to do.
-    void Move(float deltaTime, bool hasForwardHit, FHitResult &forwardHit);
+    /// \param hasForwardHit True if there is a potential collision in front of the agent.
+    /// \param forwardHit If hasForwardHit is true, it is the hit information of the potential collision.
+    void Move(float deltaTime, bool hasForwardHit, const FHitResult &forwardHit);
 
     /// Look around the agent to find its goal. If the player is visible, the method gives the player position.
     /// If there is one or multiple visible collectibles, the method gives the closest collectible position.

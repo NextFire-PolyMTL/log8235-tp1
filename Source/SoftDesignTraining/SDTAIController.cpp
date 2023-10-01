@@ -208,7 +208,7 @@ void ASDTAIController::Tick(float deltaTime)
 
     case ObjectiveType::FLEEING:
         DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Fleeing", nullptr, FColor::Green, 0.0f, true);
-        // Si l'agent ne detecte pas de mur en face de lui
+        // If the agent does not detect the wall in front of him.
         if (!AvoidWalls(parallelWallDirection, forwardHit, target))
         {
             auto upVector = GetCharacter()->GetActorForwardVector();
@@ -217,14 +217,13 @@ void ASDTAIController::Tick(float deltaTime)
 
             
             TArray<FHitResult> hitData;
-            // Si la direction prise par l'agent pour fuire ne lui fait pas prendre un mur
+            // If the direction taken by the agent to flee doesn't hit a wall.
             if (!DetectWalls(hitData, directionToTarget, ForwardWallRayCastDist))
             {
-
                 ActiveDirectionTarget = GetCharacter()->GetActorLocation() - target;
                 ActiveDirectionTarget.Normalize();
             }
-            //Si elle lui fait prendre un mur, on choisi plutôt la direction parallèle au mur qui éloigne l'agent du joueur.
+            // If the direction taken hit a wall, we choose the parallel direction to the wall that go away from the player.
             else
             {
                 auto parallelHitDirection = hitData[0].ImpactNormal.Cross(upVector);
@@ -238,7 +237,7 @@ void ASDTAIController::Tick(float deltaTime)
                 }
             }
         }
-        // Si l'agent detecte un mur, on suit la direction parallelWallDirection déterminé par AvoidWalls
+        // If the agent detect a wall, we follow the direction parallelWallDirection determined by AvoidWalls.
         if (parallelWallDirection != FVector::ZeroVector)
         {
             hasForwardHit = true;
