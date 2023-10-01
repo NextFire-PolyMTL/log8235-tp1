@@ -78,29 +78,6 @@ void ASDTAIController::CalculateFarForwardTarget()
     CalculateFarForwardTarget(GetCharacter()->GetActorForwardVector());
 }
 
-void ASDTAIController::AssignTargetDirection(FVector direction)
-{
-    ActiveDirectionTarget = direction;
-    auto rotationAxis = GetCharacter()->GetActorForwardVector().Cross(ActiveDirectionTarget);
-    auto characterUp = GetCharacter()->GetActorUpVector();
-    RotationDirection = rotationAxis.Dot(characterUp) >= 0 ? RotationSide::CLOCKWISE : RotationSide::COUNTER_CLOCKWISE;
-}
-
-void ASDTAIController::AssignTargetPoint(FVector target)
-{
-    ActiveDirectionTarget = target - GetCharacter()->GetActorLocation();
-    ActiveDirectionTarget.Normalize();
-    auto rotationAxis = GetCharacter()->GetActorForwardVector().Cross(ActiveDirectionTarget);
-    auto characterUp = GetCharacter()->GetActorUpVector();
-    RotationDirection = rotationAxis.Dot(characterUp) >= 0 ? RotationSide::CLOCKWISE : RotationSide::COUNTER_CLOCKWISE;
-}
-
-void ASDTAIController::AssignTargetPoint(FVector target, RotationSide rotationDirection)
-{
-    ActiveDirectionTarget = target - GetCharacter()->GetActorLocation();
-    ActiveDirectionTarget.Normalize();
-    RotationDirection = rotationDirection;
-}
 
 void ASDTAIController::BeginPlay()
 {
@@ -141,6 +118,7 @@ void ASDTAIController::Tick(float deltaTime)
     ObjectiveType objective;
 
     DetectObjective(objective, target);
+    // If the objective changed, reset some variables depending of the state we were in.
     if (objective != CurrentObjective)
     {
         switch (CurrentObjective)
@@ -148,7 +126,7 @@ void ASDTAIController::Tick(float deltaTime)
         case ObjectiveType::CHASSING:
             SplineChassing->ClearSplinePoints(true);
             SplineDistance = -1.0f;
-            AssignTargetDirection(GetCharacter()->GetActorForwardVector());
+            ActiveDirectionTarget = GetCharacter()->GetActorForwardVector();
             break;
 
         case ObjectiveType::WALKING:
@@ -157,9 +135,7 @@ void ASDTAIController::Tick(float deltaTime)
 
         case ObjectiveType::FLEEING:
             ResetWallsDetection();
-            AssignTargetDirection(GetCharacter()->GetActorForwardVector());
-            // SplineChassing->ClearSplinePoints(true);
-            // SplineDistance = -1.0f;
+            ActiveDirectionTarget = GetCharacter()->GetActorForwardVector();
             break;
         }
 
@@ -179,7 +155,7 @@ void ASDTAIController::Tick(float deltaTime)
             {
                 DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Chassing direct", nullptr, FColor::Green, 0.0f, true);
                 SplineDistance = -1.0f;
-                AssignTargetPoint(target);
+                ActiveDirectionTarget = target - GetCharacter()->GetActorLocation();
             }
             else
             {
@@ -199,7 +175,7 @@ void ASDTAIController::Tick(float deltaTime)
                 {
                     // We can go directly onto the target.
                     DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Chassing direct", nullptr, FColor::Green, 0.0f, true);
-                    AssignTargetPoint(target);
+                    ActiveDirectionTarget = target - GetCharacter()->GetActorLocation();
                 }
                 else
                 {
@@ -222,7 +198,7 @@ void ASDTAIController::Tick(float deltaTime)
                 hasForwardHit = AvoidWalls(parallelWallDirection, forwardHit, target);
                 if (parallelWallDirection != FVector::ZeroVector)
                 {
-                    AssignTargetDirection(parallelWallDirection);
+                    ActiveDirectionTarget = parallelWallDirection;
                 }
             }
         }
@@ -276,7 +252,7 @@ void ASDTAIController::Tick(float deltaTime)
         hasForwardHit = AvoidWalls(parallelWallDirection, forwardHit, target);
         if (parallelWallDirection != FVector::ZeroVector)
         {
-            AssignTargetDirection(parallelWallDirection);
+            ActiveDirectionTarget = parallelWallDirection;
         }
         break;
     }
@@ -484,27 +460,32 @@ void ASDTAIController::Move(float deltaTime, bool hasForwardHit, FHitResult &for
             {
                 auto doRotation = true;
 
+                auto rotationAxis = forward.Cross(ActiveDirectionTarget);
+                if (rotationAxis.IsNearlyZero())
+                {
+                    rotationAxis = character->GetActorUpVector();
+                }
+
                 // Locate a trap beside the agent (at the left or at the right) at a distance relative to the distance between the agent capsule and the wall in front of the agent.
                 // If a trap is located, stop the rotation to go closer to the wall before rotating again.
                 if (hasForwardHit && GetCharacter()->GetCharacterMovement()->GetMaxSpeed() > 0.0f)
                 {
                     auto capsule = character->GetCapsuleComponent();
                     auto capsuleRadius = capsule->GetScaledCapsuleRadius();
+                    // Calculate the closest point from the capsule on the wall. We take a line passing at the character location in the normal direction.
                     auto closestPointOnWall = FMath::LinePlaneIntersection(character->GetActorLocation(), character->GetActorLocation() - forwardHit.ImpactNormal, forwardHit.ImpactPoint, forwardHit.ImpactNormal);
+                    // Calculate the distance at which we must look beside the agent for the trap. The distance depends of the distance from the wall.
                     auto sideDistance = FMath::Clamp(((closestPointOnWall - character->GetActorLocation()).Size() - capsuleRadius), 0, 4 * capsuleRadius);
-                    auto capsuleCenter = character->GetActorLocation() + IntRotationDirection() * sideDistance * character->GetActorRightVector();
+                    // We need to know if the orientation is clockwise or counter-clockwise to determine if we must overlap on the left or the right side.
+                    auto rotationDirection = rotationAxis.Dot(character->GetActorUpVector()) >= 0 ? 1 : -1;
+                    auto capsuleCenter = character->GetActorLocation() + rotationDirection * sideDistance * character->GetActorRightVector();
+                    // We will rotate the agent if there is no overlap of a trap beside.
                     doRotation = !GetWorld()->OverlapAnyTestByObjectType(capsuleCenter, FQuat::Identity, ECC_TO_BITFIELD(COLLISION_DEATH_OBJECT), character->GetCapsuleComponent()->GetCollisionShape());
                     DrawDebugCapsule(GetWorld(), capsuleCenter, capsule->GetScaledCapsuleHalfHeight(), capsule->GetScaledCapsuleRadius(), FQuat::Identity, FColor::Blue, false, -1.0f, 0U, 3.0f);
                 }
 
                 if (doRotation)
                 {
-                    // auto rotationAxis = IntRotationDirection() * character->GetActorUpVector();
-                    auto rotationAxis = forward.Cross(ActiveDirectionTarget);
-                    if (rotationAxis.IsNearlyZero())
-                    {
-                        rotationAxis = character->GetActorUpVector();
-                    }
                     DrawDebugDirectionalArrow(GetWorld(), character->GetActorLocation(), character->GetActorLocation() + rotationAxis * 100.0f, 3.0f, FColor::Red, false, -1.0f, 0U, 6.0f);
                     auto nextDirection = forward.RotateAngleAxis(RotationAngleBySecond * deltaTime, rotationAxis);
                     CalculateFarForwardTarget(nextDirection);
