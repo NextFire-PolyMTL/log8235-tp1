@@ -19,7 +19,7 @@ public:
     bool IsOnCooldown();
 
     // The duration taken by the collectible to respawn after being collected by an actor.
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI, meta = (ClampMin = "0.0"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI, meta = (ClampMin = 0.0))
     float CollectCooldownDuration = 10.f;
 
     // If checked, the collectible will move along the y axis (from left to right) using the specified Acceleration and MaxSpeed.
@@ -29,16 +29,16 @@ public:
 
     // The maximum speed at which the collectible moves. The actual speed of the collectible
     // is calculated with the acceleration value.
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI, meta = (ClampMin = "0.0"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI, meta = (ClampMin = 0.0))
     float MaxSpeed = 500.0f;
 
     // The constant acceleration the collectible uses to calculate its next speed.
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI, meta = (ClampMin = "1.0"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI, meta = (ClampMin = 0.0))
     float Acceleration = 250.0f;
 
     // The distance from the wall at which the collectible must stop before moving
     // in the other direction.
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI, meta = (ClampMin = "0.0"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI, meta = (ClampMin = 0.0))
     float DistanceFromWall = 50.0f;
 
     virtual void Tick(float deltaTime) override;
