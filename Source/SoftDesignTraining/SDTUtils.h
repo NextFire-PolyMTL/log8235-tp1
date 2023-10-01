@@ -38,17 +38,7 @@ public:
     /// \param collisionShape The shape sweep inside the world.
     /// \param hitData [out] The overlap hits followed by a blocking hit, if any.
     /// \return True if an overlap or collision occured, false otherwise.
-    static bool SweepOverlapAgent(UWorld *world, FVector startPoint, FVector target, const FCollisionShape &collisionShape, TArray<FHitResult> &hitData);
-
-    /// Sweep a shape from a start point to a target point and provide the first blocking hit.
-    /// The blocking objects are the ones defined by the channel ECC_Pawn.
-    /// \param world A valid world pointer to launch the sweep.
-    /// \param startPoint The point where to start the sweep.
-    /// \param targetPoint The point where to stop the sweep.
-    /// \param collisionShape The shape sweep inside the world.
-    /// \param hitData [out] The hit information of the sweep.
-    /// \return True if a collision occured, false otherwise.
-    static bool SweepBlockingAgent(UWorld *world, FVector startPoint, FVector targetPoint, const FCollisionShape &collisionShape, FHitResult &hitData);
+    static bool SweepOverlapAgent(UWorld *world, FVector startPoint, FVector target, const FCollisionShape &collisionShape, FHitResult &hitData);
 
     /// Find all the visible targets from an agent perspective. The visible targets are detected in a cone with the specified angle.
     /// The vision is blocked by the blocking objects defined by the channel ECC_Pawn.

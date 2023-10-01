@@ -80,8 +80,8 @@ bool FindPathToLocationLeft(UWorld *world, FVector start, FVector target, FVecto
     depthRecursion += 1;
 
     // Find if there is an obstacle between start and target.
-    TArray<FHitResult> obstacles;
-    if (!SDTUtils::SweepOverlapAgent(world, start, target, actorCapsule->GetCollisionShape(), obstacles))
+    FHitResult hitData;
+    if (!SDTUtils::SweepOverlapAgent(world, start, target, actorCapsule->GetCollisionShape(), hitData))
     {
         // There is no obstacle, we found a path.
         points.Add(target);
@@ -91,7 +91,7 @@ bool FindPathToLocationLeft(UWorld *world, FVector start, FVector target, FVecto
 
     // Try to find a point on the corner of the obstacle that does not overlap another object.
     FVector avoidingPoint;
-    if (!GetAvoidingLeftPoint(world, obstacles[0], start, actorCapsule, avoidingPoint))
+    if (!GetAvoidingLeftPoint(world, hitData, start, actorCapsule, avoidingPoint))
     {
         return false;
     }
@@ -111,8 +111,8 @@ bool FindPathToLocationRight(UWorld* world, FVector start, FVector target, FVect
     depthRecursion += 1;
 
     // Find if there is an obstacle between start and target.
-    TArray<FHitResult> obstacles;
-    if (!SDTUtils::SweepOverlapAgent(world, start, target, actorCapsule->GetCollisionShape(), obstacles))
+    FHitResult hitData;
+    if (!SDTUtils::SweepOverlapAgent(world, start, target, actorCapsule->GetCollisionShape(), hitData))
     {
         // There is no obstacle, we found a path.
         points.Add(target);
@@ -123,7 +123,7 @@ bool FindPathToLocationRight(UWorld* world, FVector start, FVector target, FVect
 
     // Try to find a point on the corner of the obstacle that does not overlap another object.
     FVector avoidingPoint;
-    if (!GetAvoidingRightPoint(world, obstacles[0], start, actorCapsule, avoidingPoint))
+    if (!GetAvoidingRightPoint(world, hitData, start, actorCapsule, avoidingPoint))
     {
         return false;
     }
@@ -147,19 +147,12 @@ bool SDTUtils::BlockingRayAgent(UWorld *world, FVector startPoint, FVector targe
     return world->LineTraceSingleByChannel(hitData, startPoint, targetPoint, ECC_Pawn, traceParams);
 }
 
-bool SDTUtils::SweepOverlapAgent(UWorld *world, FVector startPoint, FVector target, const FCollisionShape &collisionShape, TArray<FHitResult> &hitData)
+bool SDTUtils::SweepOverlapAgent(UWorld *world, FVector startPoint, FVector target, const FCollisionShape &collisionShape, FHitResult &hitData)
 {
     FCollisionObjectQueryParams queryParams(ECC_TO_BITFIELD(ECC_WorldStatic) | ECC_TO_BITFIELD(COLLISION_DEATH_OBJECT));
     FCollisionQueryParams traceParams(FName(TEXT("Agent Trace")), true);
 
-    return world->SweepMultiByObjectType(hitData, startPoint, target, FQuat::Identity, queryParams, collisionShape, traceParams);
-}
-
-bool SDTUtils::SweepBlockingAgent(UWorld *world, FVector startPoint, FVector targetPoint, const FCollisionShape &collisionShape, FHitResult &hitData)
-{
-    FCollisionQueryParams traceParams(FName(TEXT("Agent Trace")), true);
-
-    return world->SweepSingleByChannel(hitData, startPoint, targetPoint, FQuat::Identity, ECollisionChannel::ECC_Pawn, collisionShape, traceParams);
+    return world->SweepSingleByObjectType(hitData, startPoint, target, FQuat::Identity, queryParams, collisionShape, traceParams);
 }
 
 bool SDTUtils::DetectTargetsFromAgent(UWorld *world, FVector startPoint, FVector viewDistanceDirection, float halfAngle, TArray<FOverlapResult> &overlapData)

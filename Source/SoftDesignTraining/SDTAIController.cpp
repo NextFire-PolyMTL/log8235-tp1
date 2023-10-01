@@ -149,9 +149,9 @@ void ASDTAIController::Tick(float deltaTime)
         // Check if we already calculated a spline.
         if (SplineDistance != -1.0f)
         {
-            TArray<FHitResult> obstacles;
+            FHitResult hitData;
             // Check if we have a direct path to the target. If yes, stop following the spline.
-            if (!SDTUtils::SweepOverlapAgent(GetWorld(), GetCharacter()->GetActorLocation(), target, GetCharacter()->GetCapsuleComponent()->GetCollisionShape(), obstacles))
+            if (!SDTUtils::SweepOverlapAgent(GetWorld(), GetCharacter()->GetActorLocation(), target, GetCharacter()->GetCapsuleComponent()->GetCollisionShape(), hitData))
             {
                 DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Chassing direct", nullptr, FColor::Green, 0.0f, true);
                 SplineDistance = -1.0f;
@@ -216,7 +216,7 @@ void ASDTAIController::Tick(float deltaTime)
             directionToTarget.Normalize();
 
             
-            TArray<FHitResult> hitData;
+            FHitResult hitData;
             // If the direction taken by the agent to flee doesn't hit a wall.
             if (!DetectWalls(hitData, directionToTarget, ForwardWallRayCastDist))
             {
@@ -226,7 +226,7 @@ void ASDTAIController::Tick(float deltaTime)
             // If the direction taken hit a wall, we choose the parallel direction to the wall that go away from the player.
             else
             {
-                auto parallelHitDirection = hitData[0].ImpactNormal.Cross(upVector);
+                auto parallelHitDirection = hitData.ImpactNormal.Cross(upVector);
                 if (parallelHitDirection.Dot(directionToTarget) <= 0)
                 {
                     ActiveDirectionTarget = -parallelHitDirection;
@@ -275,14 +275,10 @@ bool ASDTAIController::AvoidWalls(FVector &targetDirection, FHitResult &forwardH
     auto pos = character->GetActorLocation();
     auto forwardVector = character->GetActorForwardVector();
 
-    TArray<FHitResult> hitData;
-    auto isForwardHit = DetectWalls(hitData, forwardVector, ForwardWallRayCastDist);
+    auto isForwardHit = DetectWalls(forwardHit, forwardVector, ForwardWallRayCastDist);
 
     if (isForwardHit)
     {
-
-        forwardHit = hitData[0];
-
         // Calculate the cross product to get a horizontal vector on the plane of the wall pointing to the right.
         auto upVector = character->GetActorUpVector();
         auto parallelHitDirection = forwardHit.ImpactNormal.Cross(upVector);
@@ -308,16 +304,16 @@ bool ASDTAIController::AvoidWalls(FVector &targetDirection, FHitResult &forwardH
 
                 // Use the horizontal vector parallel to the wall to detect another wall at the left or the right of the character.
                 // It works here because the floor is flat. On an inclined floor, the sweep will hit the floor.
-                TArray<FHitResult> parallelHitSide1;
+                FHitResult parallelHitSide1;
                 auto isParallelHitSide1 = SDTUtils::SweepOverlapAgent(world, impactPointWithCapsule, impactPointWithCapsule + parallelHitDirection * SidesWallRayCastDist, collisionShape, parallelHitSide1);
-                TArray<FHitResult> parallelHitSide2;
+                FHitResult parallelHitSide2;
                 auto isParallelHitSide2 = SDTUtils::SweepOverlapAgent(world, impactPointWithCapsule, impactPointWithCapsule - parallelHitDirection * SidesWallRayCastDist, collisionShape, parallelHitSide2);
 
                 auto productForwardAndNormal = parallelHitDirection.Dot(forwardVector);
-                if (!parallelHitSide1.IsEmpty() && !parallelHitSide2.IsEmpty())
+                if (isParallelHitSide1 && isParallelHitSide2)
                 {
                     // Turn to the direction where there is more space between the walls.
-                    if (parallelHitSide1[0].Distance > parallelHitSide2[0].Distance)
+                    if (parallelHitSide1.Distance > parallelHitSide2.Distance)
                     {
                         RotationDirection = RotationSide::CLOCKWISE;
                     }
@@ -415,7 +411,7 @@ bool ASDTAIController::AvoidWalls(FVector &targetDirection, FHitResult &forwardH
 
     return false;
 }
-bool ASDTAIController::DetectWalls(TArray<FHitResult> &hitData, FVector hitDirection, float hitDist)
+bool ASDTAIController::DetectWalls(FHitResult &hitData, FVector hitDirection, float hitDist)
 {
     auto world = GetWorld();
     auto character = GetCharacter();
@@ -424,9 +420,7 @@ bool ASDTAIController::DetectWalls(TArray<FHitResult> &hitData, FVector hitDirec
     auto forwardVector = hitDirection;
     auto loc = character->GetActorLocation();
 
-    SDTUtils::SweepOverlapAgent(world, loc, loc + hitDist * forwardVector, collisionShape, hitData);
-    auto isForwardHit = !hitData.IsEmpty();
-    return isForwardHit;
+    return SDTUtils::SweepOverlapAgent(world, loc, loc + hitDist * forwardVector, collisionShape, hitData);
 }
 
 void ASDTAIController::ResetWallsDetection()
@@ -445,7 +439,7 @@ void ASDTAIController::UpdateTargetPositionOnSpline(float deltaTime)
     }
 }
 
-void ASDTAIController::Move(float deltaTime, bool hasForwardHit, FHitResult &forwardHit)
+void ASDTAIController::Move(float deltaTime, bool hasForwardHit, const FHitResult &forwardHit)
 {
     auto character = GetCharacter();
     if (SplineDistance == -1.0f)
@@ -503,7 +497,7 @@ void ASDTAIController::Move(float deltaTime, bool hasForwardHit, FHitResult &for
     }
 }
 
-void ASDTAIController::SpeedControl(float deltaTime, bool hasForwardHit, FHitResult &forwardHit)
+void ASDTAIController::SpeedControl(float deltaTime, bool hasForwardHit, const FHitResult &forwardHit)
 {
     auto character = GetCharacter();
     auto currentSpeed = character->GetVelocity().Size();
