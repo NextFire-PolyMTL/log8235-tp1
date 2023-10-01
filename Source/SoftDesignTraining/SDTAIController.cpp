@@ -195,7 +195,7 @@ void ASDTAIController::Tick(float deltaTime)
             else
             {
                 DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Chassing no path", nullptr, FColor::Green, 0.0f, true);
-                hasForwardHit = AvoidWalls(parallelWallDirection, forwardHit, target);
+                hasForwardHit = AvoidObstacles(parallelWallDirection, forwardHit, target);
                 if (parallelWallDirection != FVector::ZeroVector)
                 {
                     ActiveDirectionTarget = parallelWallDirection;
@@ -209,7 +209,7 @@ void ASDTAIController::Tick(float deltaTime)
     case ObjectiveType::FLEEING:
         DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Fleeing", nullptr, FColor::Green, 0.0f, true);
         // If the agent does not detect the wall in front of him.
-        if (!AvoidWalls(parallelWallDirection, forwardHit, target))
+        if (!AvoidObstacles(parallelWallDirection, forwardHit, target))
         {
             auto upVector = GetCharacter()->GetActorForwardVector();
             auto directionToTarget = GetCharacter()->GetActorLocation() - target;
@@ -218,7 +218,7 @@ void ASDTAIController::Tick(float deltaTime)
             
             FHitResult hitData;
             // If the direction taken by the agent to flee doesn't hit a wall.
-            if (!DetectWalls(hitData, directionToTarget, ForwardWallRayCastDist))
+            if (!DetectObstacles(hitData, directionToTarget, ForwardWallRayCastDist))
             {
                 ActiveDirectionTarget = GetCharacter()->GetActorLocation() - target;
                 ActiveDirectionTarget.Normalize();
@@ -237,7 +237,7 @@ void ASDTAIController::Tick(float deltaTime)
                 }
             }
         }
-        // If the agent detect a wall, we follow the direction parallelWallDirection determined by AvoidWalls.
+        // If the agent detect a wall, we follow the direction parallelWallDirection determined by AvoidObstacles.
         if (parallelWallDirection != FVector::ZeroVector)
         {
             hasForwardHit = true;
@@ -247,7 +247,7 @@ void ASDTAIController::Tick(float deltaTime)
 
     case ObjectiveType::WALKING:
         DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Walking", nullptr, FColor::Green, 0.0f, true);
-        hasForwardHit = AvoidWalls(parallelWallDirection, forwardHit, target);
+        hasForwardHit = AvoidObstacles(parallelWallDirection, forwardHit, target);
         if (parallelWallDirection != FVector::ZeroVector)
         {
             ActiveDirectionTarget = parallelWallDirection;
@@ -267,7 +267,7 @@ void ASDTAIController::Tick(float deltaTime)
     }
 }
 
-bool ASDTAIController::AvoidWalls(FVector &targetDirection, FHitResult &forwardHit, FVector playerPos)
+bool ASDTAIController::AvoidObstacles(FVector &targetDirection, FHitResult &forwardHit, FVector playerPos)
 {
     auto world = GetWorld();
     auto character = GetCharacter();
@@ -275,7 +275,7 @@ bool ASDTAIController::AvoidWalls(FVector &targetDirection, FHitResult &forwardH
     auto pos = character->GetActorLocation();
     auto forwardVector = character->GetActorForwardVector();
 
-    auto isForwardHit = DetectWalls(forwardHit, forwardVector, ForwardWallRayCastDist);
+    auto isForwardHit = DetectObstacles(forwardHit, forwardVector, ForwardWallRayCastDist);
 
     if (isForwardHit)
     {
@@ -411,7 +411,7 @@ bool ASDTAIController::AvoidWalls(FVector &targetDirection, FHitResult &forwardH
 
     return false;
 }
-bool ASDTAIController::DetectWalls(FHitResult &hitData, FVector hitDirection, float hitDist)
+bool ASDTAIController::DetectObstacles(FHitResult &hitData, FVector hitDirection, float hitDist)
 {
     auto world = GetWorld();
     auto character = GetCharacter();

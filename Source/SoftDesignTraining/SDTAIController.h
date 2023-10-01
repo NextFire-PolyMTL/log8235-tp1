@@ -107,18 +107,18 @@ private:
     /// \param targetDirection [out] On the first collision detection, a direction parallel to the wall, either left or right depending of the other obstacles around.
     /// \param collisionDistance [out] The distance of the forward collision.
     /// \return True if a collision is detected, false otherwise.
-    bool AvoidWalls(FVector &targetDirection, FHitResult &forwardHit,FVector playerPos);
+    bool AvoidObstacles(FVector &targetDirection, FHitResult &forwardHit,FVector playerPos);
 
     /// Detect walls from the agent toward a direction with a distance given as inpout
     /// \param hitData [out] hit result.
     /// \param hitDirection the direction of the raycast.
     /// \param hitDist the distance of th raycast.
     /// \return True if a collision is detected, false otherwise.
-    bool DetectWalls(FHitResult &hitData, FVector hitDirection, float hitDist);
+    bool DetectObstacles(FHitResult &hitData, FVector hitDirection, float hitDist);
     /// Reset the wall detection even if there was a collision detected.
     void ResetWallsDetection();
 
-    /// The normal of the last wall detected during a call to DetectWalls.
+    /// The normal of the last wall detected during a call to DetectObstacles.
     FVector LastImpactNormal = FVector::ZeroVector;
 
     /// When the first wall is detected, indicates the rotation direction axis.
