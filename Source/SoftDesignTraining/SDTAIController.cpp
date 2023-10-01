@@ -114,7 +114,7 @@ void ASDTAIController::Tick(float deltaTime)
     auto hasForwardHit = false;
     FHitResult forwardHit;
     auto target = FVector::ZeroVector;
-    auto parallelWallDirection = FVector::ZeroVector;
+    auto parallelObstacleDirection = FVector::ZeroVector;
     ObjectiveType objective;
 
     DetectObjective(objective, target);
@@ -130,11 +130,11 @@ void ASDTAIController::Tick(float deltaTime)
             break;
 
         case ObjectiveType::WALKING:
-            ResetWallsDetection();
+            ResetObstaclesDetection();
             break;
 
         case ObjectiveType::FLEEING:
-            ResetWallsDetection();
+            ResetObstaclesDetection();
             ActiveDirectionTarget = GetCharacter()->GetActorForwardVector();
             break;
         }
@@ -195,10 +195,10 @@ void ASDTAIController::Tick(float deltaTime)
             else
             {
                 DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Chassing no path", nullptr, FColor::Green, 0.0f, true);
-                hasForwardHit = AvoidObstacles(parallelWallDirection, forwardHit, target);
-                if (parallelWallDirection != FVector::ZeroVector)
+                hasForwardHit = AvoidObstacles(parallelObstacleDirection, forwardHit, target);
+                if (parallelObstacleDirection != FVector::ZeroVector)
                 {
-                    ActiveDirectionTarget = parallelWallDirection;
+                    ActiveDirectionTarget = parallelObstacleDirection;
                 }
             }
         }
@@ -208,8 +208,8 @@ void ASDTAIController::Tick(float deltaTime)
 
     case ObjectiveType::FLEEING:
         DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Fleeing", nullptr, FColor::Green, 0.0f, true);
-        // If the agent does not detect the wall in front of him.
-        if (!AvoidObstacles(parallelWallDirection, forwardHit, target))
+        // If the agent does not detect the Obstacle in front of him.
+        if (!AvoidObstacles(parallelObstacleDirection, forwardHit, target))
         {
             auto upVector = GetCharacter()->GetActorForwardVector();
             auto directionToTarget = GetCharacter()->GetActorLocation() - target;
@@ -217,13 +217,13 @@ void ASDTAIController::Tick(float deltaTime)
 
             
             FHitResult hitData;
-            // If the direction taken by the agent to flee doesn't hit a wall.
-            if (!DetectObstacles(hitData, directionToTarget, ForwardWallRayCastDist))
+            // If the direction taken by the agent to flee doesn't hit a Obstacle.
+            if (!DetectObstacles(hitData, directionToTarget, ForwardObstacleRayCastDist))
             {
                 ActiveDirectionTarget = GetCharacter()->GetActorLocation() - target;
                 ActiveDirectionTarget.Normalize();
             }
-            // If the direction taken hit a wall, we choose the parallel direction to the wall that go away from the player.
+            // If the direction taken hit a Obstacle, we choose the parallel direction to the Obstacle that go away from the player.
             else
             {
                 auto parallelHitDirection = hitData.ImpactNormal.Cross(upVector);
@@ -237,20 +237,20 @@ void ASDTAIController::Tick(float deltaTime)
                 }
             }
         }
-        // If the agent detect a wall, we follow the direction parallelWallDirection determined by AvoidObstacles.
-        if (parallelWallDirection != FVector::ZeroVector)
+        // If the agent detect a Obstacle, we follow the direction parallelObstacleDirection determined by AvoidObstacles.
+        if (parallelObstacleDirection != FVector::ZeroVector)
         {
             hasForwardHit = true;
-            ActiveDirectionTarget = parallelWallDirection.GetSafeNormal();
+            ActiveDirectionTarget = parallelObstacleDirection.GetSafeNormal();
         }
         break;
 
     case ObjectiveType::WALKING:
         DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Walking", nullptr, FColor::Green, 0.0f, true);
-        hasForwardHit = AvoidObstacles(parallelWallDirection, forwardHit, target);
-        if (parallelWallDirection != FVector::ZeroVector)
+        hasForwardHit = AvoidObstacles(parallelObstacleDirection, forwardHit, target);
+        if (parallelObstacleDirection != FVector::ZeroVector)
         {
-            ActiveDirectionTarget = parallelWallDirection;
+            ActiveDirectionTarget = parallelObstacleDirection;
         }
         break;
     }
@@ -275,11 +275,11 @@ bool ASDTAIController::AvoidObstacles(FVector &targetDirection, FHitResult &forw
     auto pos = character->GetActorLocation();
     auto forwardVector = character->GetActorForwardVector();
 
-    auto isForwardHit = DetectObstacles(forwardHit, forwardVector, ForwardWallRayCastDist);
+    auto isForwardHit = DetectObstacles(forwardHit, forwardVector, ForwardObstacleRayCastDist);
 
     if (isForwardHit)
     {
-        // Calculate the cross product to get a horizontal vector on the plane of the wall pointing to the right.
+        // Calculate the cross product to get a horizontal vector on the plane of the obstacle pointing to the right.
         auto upVector = character->GetActorUpVector();
         auto parallelHitDirection = forwardHit.ImpactNormal.Cross(upVector);
 
@@ -293,26 +293,26 @@ bool ASDTAIController::AvoidObstacles(FVector &targetDirection, FHitResult &forw
 
             if (isCornerDetected)
             {
-                // Stick on the same rotation side when detecting any subsequent walls. This is to avoid to stay stuck in a corner.
+                // Stick on the same rotation side when detecting any subsequent obstacles. This is to avoid to stay stuck in a corner.
                 targetDirection = IntRotationDirection() * parallelHitDirection;
             }
             else
             {
                 // Calculate which direction (left or right) we want to go.
-                // Add 1 cm to the capsule radius to do not be too close of the wall when doing the parallel SweepCast.
+                // Add 1 cm to the capsule radius to do not be too close of the obstacle when doing the parallel SweepCast.
                 auto impactPointWithCapsule = forwardHit.ImpactPoint + forwardHit.ImpactNormal * (collisionShape.GetCapsuleRadius() + 1.0f);
 
-                // Use the horizontal vector parallel to the wall to detect another wall at the left or the right of the character.
+                // Use the horizontal vector parallel to the obstacle to detect another obstacle at the left or the right of the character.
                 // It works here because the floor is flat. On an inclined floor, the sweep will hit the floor.
                 FHitResult parallelHitSide1;
-                auto isParallelHitSide1 = SDTUtils::SweepOverlapAgent(world, impactPointWithCapsule, impactPointWithCapsule + parallelHitDirection * SidesWallRayCastDist, collisionShape, parallelHitSide1);
+                auto isParallelHitSide1 = SDTUtils::SweepOverlapAgent(world, impactPointWithCapsule, impactPointWithCapsule + parallelHitDirection * SidesObstacleRayCastDist, collisionShape, parallelHitSide1);
                 FHitResult parallelHitSide2;
-                auto isParallelHitSide2 = SDTUtils::SweepOverlapAgent(world, impactPointWithCapsule, impactPointWithCapsule - parallelHitDirection * SidesWallRayCastDist, collisionShape, parallelHitSide2);
+                auto isParallelHitSide2 = SDTUtils::SweepOverlapAgent(world, impactPointWithCapsule, impactPointWithCapsule - parallelHitDirection * SidesObstacleRayCastDist, collisionShape, parallelHitSide2);
 
                 auto productForwardAndNormal = parallelHitDirection.Dot(forwardVector);
                 if (isParallelHitSide1 && isParallelHitSide2)
                 {
-                    // Turn to the direction where there is more space between the walls.
+                    // Turn to the direction where there is more space between the obstacles.
                     if (parallelHitSide1.Distance > parallelHitSide2.Distance)
                     {
                         RotationDirection = RotationSide::CLOCKWISE;
@@ -330,7 +330,7 @@ bool ASDTAIController::AvoidObstacles(FVector &targetDirection, FHitResult &forw
                 {
                     RotationDirection = RotationSide::CLOCKWISE;
                 }
-                // If the actor approximately faces the wall, choose a random direction.
+                // If the actor approximately faces the obstacle, choose a random direction.
                 else if (-0.05f < productForwardAndNormal && productForwardAndNormal < 0.05f)
                 {
                     //If the actor flee a player, we choose de rotation which will give the direction to go far away from the player.
@@ -368,15 +368,15 @@ bool ASDTAIController::AvoidObstacles(FVector &targetDirection, FHitResult &forw
                     }
                     else
                     {
-                        //The agent will go to the right/left of the wall if it comes from the right/left
+                        //The agent will go to the right/left of the obstacle if it comes from the right/left
                         RotationDirection = productForwardAndNormal >= 0 ? RotationSide::CLOCKWISE : RotationSide::COUNTER_CLOCKWISE;
                     }
                 }
                 targetDirection = IntRotationDirection() * parallelHitDirection;
 
-                DrawDebugLine(world, impactPointWithCapsule, impactPointWithCapsule + forwardVector * ForwardWallRayCastDist, ColorIfHit(isForwardHit), false, collisionDurationDebug, 0, ThicknessIfHit(isForwardHit));
-                DrawDebugLine(world, impactPointWithCapsule, impactPointWithCapsule + parallelHitDirection * SidesWallRayCastDist, ColorIfHit(isParallelHitSide1), false, collisionDurationDebug, 0, ThicknessIfHit(isParallelHitSide1));
-                DrawDebugLine(world, impactPointWithCapsule, impactPointWithCapsule - parallelHitDirection * SidesWallRayCastDist, ColorIfHit(isParallelHitSide2), false, collisionDurationDebug, 0, ThicknessIfHit(isParallelHitSide2));
+                DrawDebugLine(world, impactPointWithCapsule, impactPointWithCapsule + forwardVector * ForwardObstacleRayCastDist, ColorIfHit(isForwardHit), false, collisionDurationDebug, 0, ThicknessIfHit(isForwardHit));
+                DrawDebugLine(world, impactPointWithCapsule, impactPointWithCapsule + parallelHitDirection * SidesObstacleRayCastDist, ColorIfHit(isParallelHitSide1), false, collisionDurationDebug, 0, ThicknessIfHit(isParallelHitSide1));
+                DrawDebugLine(world, impactPointWithCapsule, impactPointWithCapsule - parallelHitDirection * SidesObstacleRayCastDist, ColorIfHit(isParallelHitSide2), false, collisionDurationDebug, 0, ThicknessIfHit(isParallelHitSide2));
                 DrawDebugDirectionalArrow(world, forwardHit.ImpactPoint, (forwardHit.ImpactPoint + forwardHit.ImpactNormal * 100.0), 5.0f, FColor::Green, false, collisionDurationDebug, 0, 2.0f);
                 DrawDebugDirectionalArrow(world, forwardHit.ImpactPoint, (forwardHit.ImpactPoint + upVector * 100.0), 5.0f, FColor::Blue, false, collisionDurationDebug, 0, 2.0f);
                 DrawDebugDirectionalArrow(world, forwardHit.ImpactPoint, (forwardHit.ImpactPoint + parallelHitDirection * 100.0), 5.0f, FColor::Magenta, false, collisionDurationDebug, 0, 2.0f);
@@ -386,7 +386,7 @@ bool ASDTAIController::AvoidObstacles(FVector &targetDirection, FHitResult &forw
             }
         }
         
-        //If the agent hit the same wall
+        //If the agent hit the same obstacle
         else
         {
             //If the agent flees a player, we make sure the targetDirection allow to the agent to go far from the player.
@@ -423,7 +423,7 @@ bool ASDTAIController::DetectObstacles(FHitResult &hitData, FVector hitDirection
     return SDTUtils::SweepOverlapAgent(world, loc, loc + hitDist * forwardVector, collisionShape, hitData);
 }
 
-void ASDTAIController::ResetWallsDetection()
+void ASDTAIController::ResetObstaclesDetection()
 {
     LastImpactNormal = FVector::ZeroVector;
 }
@@ -462,16 +462,16 @@ void ASDTAIController::Move(float deltaTime, bool hasForwardHit, const FHitResul
                     rotationAxis = character->GetActorUpVector();
                 }
 
-                // Locate a trap beside the agent (at the left or at the right) at a distance relative to the distance between the agent capsule and the wall in front of the agent.
-                // If a trap is located, stop the rotation to go closer to the wall before rotating again.
+                // Locate a trap beside the agent (at the left or at the right) at a distance relative to the distance between the agent capsule and the obstacle in front of the agent.
+                // If a trap is located, stop the rotation to go closer to the obstacle before rotating again.
                 if (hasForwardHit && GetCharacter()->GetCharacterMovement()->GetMaxSpeed() > 0.0f)
                 {
                     auto capsule = character->GetCapsuleComponent();
                     auto capsuleRadius = capsule->GetScaledCapsuleRadius();
-                    // Calculate the closest point from the capsule on the wall. We take a line passing at the character location in the normal direction.
-                    auto closestPointOnWall = FMath::LinePlaneIntersection(character->GetActorLocation(), character->GetActorLocation() - forwardHit.ImpactNormal, forwardHit.ImpactPoint, forwardHit.ImpactNormal);
-                    // Calculate the distance at which we must look beside the agent for the trap. The distance depends of the distance from the wall.
-                    auto sideDistance = FMath::Clamp(((closestPointOnWall - character->GetActorLocation()).Size() - capsuleRadius), 0, 4 * capsuleRadius);
+                    // Calculate the closest point from the capsule on the obstacle. We take a line passing at the character location in the normal direction.
+                    auto closestPointOnObstacle = FMath::LinePlaneIntersection(character->GetActorLocation(), character->GetActorLocation() - forwardHit.ImpactNormal, forwardHit.ImpactPoint, forwardHit.ImpactNormal);
+                    // Calculate the distance at which we must look beside the agent for the trap. The distance depends of the distance from the obstacle.
+                    auto sideDistance = FMath::Clamp(((closestPointOnObstacle - character->GetActorLocation()).Size() - capsuleRadius), 0, 4 * capsuleRadius);
                     // We need to know if the orientation is clockwise or counter-clockwise to determine if we must overlap on the left or the right side.
                     auto rotationDirection = rotationAxis.Dot(character->GetActorUpVector()) >= 0 ? 1 : -1;
                     auto capsuleCenter = character->GetActorLocation() + rotationDirection * sideDistance * character->GetActorRightVector();

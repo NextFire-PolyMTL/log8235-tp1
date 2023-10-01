@@ -40,11 +40,11 @@ public:
 
     /// At which distance should the agent check for obstacles in front of it
     UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
-    float ForwardWallRayCastDist = 200.0f;
+    float ForwardObstacleRayCastDist = 200.0f;
 
     /// At which distance should the agent check for obstacles on its sides
     UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
-    float SidesWallRayCastDist = 300.0f;
+    float SidesObstacleRayCastDist = 300.0f;
 
     /// Maximum angle (in degrees) at which the agent can rotate per second
     UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0.0))
@@ -66,18 +66,18 @@ private:
         CLOCKWISE = 1
     };
 
-    /// The current rotation side chosen by the wall detection as an integer value.
+    /// The current rotation side chosen by the obstacle detection as an integer value.
     int IntRotationDirection() const;
 
     /// Starts to move directly to the target, but adjust the target point to be at least at some distance of the actor.
     /// \param target The world position where the actor will move forward.
     /// \param minimumDistance The minimum distance from the actor at which the point to move to is set.
     void SetTarget(FVector target, float minimumDistance = 200.0f);
-    /// Starts to move in the direction specified to the point where a wall is detected or until the maximum distance is reached.
+    /// Starts to move in the direction specified to the point where a obstacle is detected or until the maximum distance is reached.
     /// \param headingDirection The direction to start to move.
     /// \param maximumDistance The maximum distance to move.
     void CalculateFarForwardTarget(FVector headingDirection, float maximumDistance = 10000.0f);
-    /// Starts to move in the direction at which the character is looking at until a wall is detected or until the maximum distance is reached.
+    /// Starts to move in the direction at which the character is looking at until a obstacle is detected or until the maximum distance is reached.
     void CalculateFarForwardTarget();
 
     /// Update the next position to go on the spline. There must be a valid spline for that.
@@ -102,26 +102,26 @@ private:
     /// \param target [out] A position of an object to fulfill the goal.
     void DetectObjective(ObjectiveType &objective, FVector &target);
 
-    /// Look in front of the agent to detect a future collision. The method will only give a parallel direction to the wall
-    /// the first time it detects a new wall. Also, the method must detect no collision in order to give another parallel direction on a subsequent call.
-    /// \param targetDirection [out] On the first collision detection, a direction parallel to the wall, either left or right depending of the other obstacles around.
+    /// Look in front of the agent to detect a future collision. The method will only give a parallel direction to the obstacle
+    /// the first time it detects a new obstacle. Also, the method must detect no collision in order to give another parallel direction on a subsequent call.
+    /// \param targetDirection [out] On the first collision detection, a direction parallel to the obstacle, either left or right depending of the other obstacles around.
     /// \param collisionDistance [out] The distance of the forward collision.
     /// \return True if a collision is detected, false otherwise.
     bool AvoidObstacles(FVector &targetDirection, FHitResult &forwardHit,FVector playerPos);
 
-    /// Detect walls from the agent toward a direction with a distance given as inpout
+    /// Detect obstacles from the agent toward a direction with a distance given as inpout
     /// \param hitData [out] hit result.
     /// \param hitDirection the direction of the raycast.
     /// \param hitDist the distance of th raycast.
     /// \return True if a collision is detected, false otherwise.
     bool DetectObstacles(FHitResult &hitData, FVector hitDirection, float hitDist);
-    /// Reset the wall detection even if there was a collision detected.
-    void ResetWallsDetection();
+    /// Reset the obstacle detection even if there was a collision detected.
+    void ResetObstaclesDetection();
 
-    /// The normal of the last wall detected during a call to DetectObstacles.
+    /// The normal of the last obstacle detected during a call to DetectObstacles.
     FVector LastImpactNormal = FVector::ZeroVector;
 
-    /// When the first wall is detected, indicates the rotation direction axis.
+    /// When the first obstacle is detected, indicates the rotation direction axis.
     RotationSide RotationDirection = RotationSide::CLOCKWISE;
 
     /// The actual objective. When changing the objective, some variables need to be reset.
