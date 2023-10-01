@@ -394,7 +394,7 @@ bool ASDTAIController::AvoidWalls(FVector &targetDirection, FHitResult &forwardH
         //If the agent hit the same wall
         else
         {
-            //If the agent flees a player, we change the direction in odrer to go far from the player
+            //If the agent flees a player, we make sure the targetDirection allow to the agent to go far from the player.
             if (playerPos != FVector::ZeroVector)
             {
                 auto directionPlayerToAgent = pos - playerPos;
