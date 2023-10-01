@@ -106,6 +106,12 @@ private:
     /// \param collisionDistance [out] The distance of the forward collision.
     /// \return True if a collision is detected, false otherwise.
     bool AvoidWalls(FVector &targetDirection, FHitResult &forwardHit,FVector playerPos);
+
+    /// Detect walls from the agent toward a direction with a distance given as inout
+    /// \param hitData [out] hit results.
+    /// \param hitDirection the direction of the raycast.
+    /// \param hitDist the distance of th raycast.
+    /// \return True if a collision is detected, false otherwise.
     bool DetectWalls(TArray<FHitResult>& hitData, FVector hitDirection, float hitDist);
     /// Reset the wall detection even if there was a collision detected.
     void ResetWallsDetection();

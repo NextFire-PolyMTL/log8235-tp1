@@ -158,8 +158,6 @@ void ASDTAIController::Tick(float deltaTime)
         case ObjectiveType::FLEEING:
             ResetWallsDetection();
             AssignTargetDirection(GetCharacter()->GetActorForwardVector());
-            // SplineChassing->ClearSplinePoints(true);
-            // SplineDistance = -1.0f;
             break;
         }
 
@@ -232,20 +230,23 @@ void ASDTAIController::Tick(float deltaTime)
 
     case ObjectiveType::FLEEING:
         DrawDebugString(GetWorld(), GetCharacter()->GetActorLocation(), "Fleeing", nullptr, FColor::Green, 0.0f, true);
-        // Si l'agent ne detecte pas de mur
+        // Si l'agent ne detecte pas de mur en face de lui
         if (!AvoidWalls(parallelWallDirection, forwardHit, target))
         {
             auto upVector = GetCharacter()->GetActorForwardVector();
             auto directionToTarget = GetCharacter()->GetActorLocation() - target;
             directionToTarget.Normalize();
-            // Si la direction prise par l'agent pour fuir ne lui fait pas prendre un mur
+
+            
             TArray<FHitResult> hitData;
+            // Si la direction prise par l'agent pour fuire ne lui fait pas prendre un mur
             if (!DetectWalls(hitData, directionToTarget, ForwardWallRayCastDist))
             {
 
                 ActiveDirectionTarget = GetCharacter()->GetActorLocation() - target;
                 ActiveDirectionTarget.Normalize();
             }
+            //Si elle lui fait prendre un mur, on choisi plutôt la direction parallèle au mur qui éloigne l'agent du joueur.
             else
             {
                 auto parallelHitDirection = hitData[0].ImpactNormal.Cross(upVector);
@@ -259,14 +260,10 @@ void ASDTAIController::Tick(float deltaTime)
                 }
             }
         }
-        // Si l'agent detecte un mur, on suit la direction parall<E8>le au mur dans le sens o<F9> le joueur se dirige
+        // Si l'agent detecte un mur, on suit la direction parallelWallDirection déterminé par AvoidWalls
         if (parallelWallDirection != FVector::ZeroVector)
         {
-
-            // Si l'agent detecte un mur, on suit la direction parall�le au mur dans le sens o� le joueur se dirige
             hasForwardHit = true;
-            auto directionToTarget = GetCharacter()->GetActorLocation() - target;
-            directionToTarget.Normalize();
             ActiveDirectionTarget = parallelWallDirection.GetSafeNormal();
         }
         break;
@@ -291,7 +288,6 @@ void ASDTAIController::Tick(float deltaTime)
     {
         DrawDebugDirectionalArrow(GetWorld(), GetCharacter()->GetActorLocation(), GetCharacter()->GetActorLocation() + ActiveDirectionTarget * 100.0f, 2.0f, FColor::Magenta, false, -1.0f, 0U, 5.0f);
     }
-    // GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0.0f, FColor::Yellow, FString::Printf(TEXT("[%s] Velocity: %f cm/s"), *character->GetName(), character->GetVelocity().Size()));
 }
 
 bool ASDTAIController::AvoidWalls(FVector &targetDirection, FHitResult &forwardHit, FVector playerPos)
@@ -364,6 +360,7 @@ bool ASDTAIController::AvoidWalls(FVector &targetDirection, FHitResult &forwardH
                 // If the actor approximately faces the wall, choose a random direction.
                 else if (-0.05f < productForwardAndNormal && productForwardAndNormal < 0.05f)
                 {
+                    //If the actor flee a player, we choose de rotation which will give the direction to go far away from the player.
                     if (playerPos != FVector::ZeroVector)
                     {
                         auto directionPlayerToAgent = pos - playerPos;
@@ -383,6 +380,7 @@ bool ASDTAIController::AvoidWalls(FVector &targetDirection, FHitResult &forwardH
                 }
                 else
                 {
+                    //If the actor flee a player, we choose de rotation which will give the direction to go far away from the player.
                     if (playerPos != FVector::ZeroVector)
                     {
                         auto directionPlayerToAgent = pos - playerPos;
@@ -397,6 +395,7 @@ bool ASDTAIController::AvoidWalls(FVector &targetDirection, FHitResult &forwardH
                     }
                     else
                     {
+                        //The agent will go to the right/left of the wall if it comes from the right/left
                         RotationDirection = productForwardAndNormal >= 0 ? RotationSide::CLOCKWISE : RotationSide::COUNTER_CLOCKWISE;
                     }
                 }
@@ -413,9 +412,11 @@ bool ASDTAIController::AvoidWalls(FVector &targetDirection, FHitResult &forwardH
                 DrawDebugBox(world, hitComponent->Bounds.Origin, hitComponent->Bounds.BoxExtent, FColor::Green, false, collisionDurationDebug);
             }
         }
+        
+        //If the agent hit the same wall
         else
         {
-
+            //If the agent flees a player, we change the direction in odrer to go far from the player
             if (playerPos != FVector::ZeroVector)
             {
                 auto directionPlayerToAgent = pos - playerPos;
@@ -424,7 +425,7 @@ bool ASDTAIController::AvoidWalls(FVector &targetDirection, FHitResult &forwardH
                     RotationDirection = RotationSide::COUNTER_CLOCKWISE;
                 }
             }
-
+            //We keep the same direction as before
             targetDirection = IntRotationDirection() * parallelHitDirection;
         }
 
